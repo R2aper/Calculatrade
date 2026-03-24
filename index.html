@@ -29,15 +29,203 @@
         </nav>
 
         <div class="p-8">
-            <!-- Все содержимое табов будет здесь -->
-            <div id="content0" class="tab-content"></div>
-            <div id="content1" class="tab-content hidden"></div>
-            <div id="content2" class="tab-content hidden"></div>
-            <div id="content3" class="tab-content hidden"></div>
-            <div id="content4" class="tab-content hidden"></div>
-            <div id="content5" class="tab-content hidden"></div>
+            <!-- Таб 0 — Дашборд -->
+            <div id="content0" class="tab-content">
+                <div class="grid grid-cols-4 gap-6">
+                    <div class="card">
+                        <p class="text-muted text-sm">Общий риск до мер</p>
+                        <p id="totalRiskBefore" class="text-5xl font-bold text-danger mt-2">0</p>
+                        <p class="text-xs text-muted">баллов по всем рискам</p>
+                    </div>
+                    <div class="card">
+                        <p class="text-muted text-sm">Общий риск после мер</p>
+                        <p id="totalRiskAfter" class="text-5xl font-bold text-success mt-2">0</p>
+                        <p class="text-xs text-muted">баллов</p>
+                    </div>
+                    <div class="card">
+                        <p class="text-muted text-sm">Экономический эффект</p>
+                        <p id="totalEffect" class="text-5xl font-bold text-success mt-2">0 ₽</p>
+                        <p class="text-xs text-muted">за год</p>
+                    </div>
+                    <div class="card">
+                        <p class="text-muted text-sm">Средний ROI</p>
+                        <p id="avgROI" class="text-5xl font-bold text-primary mt-2">0%</p>
+                    </div>
+                </div>
+                <div class="mt-10">
+                    <h2 class="text-xl font-semibold mb-4">Последние риски</h2>
+                    <div id="lastRisks" class="grid grid-cols-3 gap-4"></div>
+                </div>
+            </div>
+            <!-- Таб 1 — Критерии -->
+            <div id="content1" class="tab-content hidden">
+                <div class="max-w-2xl mx-auto card p-8">
+                    <h2 class="text-2xl font-bold mb-6">Настройка критериев (ГОСТ Р 27005)</h2>
+                    <div class="space-y-8">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Формула риска</label>
+                            <div class="text-3xl font-bold text-primary">Риск = Ущерб × Вероятность × Приоритет актива</div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-6">
+                            <div>
+                                <label class="block text-sm mb-1">Уровень ущерба (баллы)</label>
+                                <input type="range" id="damageMax" min="1" max="4" value="4" class="w-full">
+                                <div class="flex justify-between text-xs"><span>1</span><span id="damageVal">4</span></div>
+                            </div>
+                            <div>
+                                <label class="block text-sm mb-1">Вероятность (баллы)</label>
+                                <input type="range" id="probMax" min="1" max="4" value="4" class="w-full">
+                                <div class="flex justify-between text-xs"><span>1</span><span id="probVal">4</span></div>
+                            </div>
+                            <div>
+                                <label class="block text-sm mb-1">Приоритет актива (баллы)</label>
+                                <input type="range" id="priorityMax" min="1" max="4" value="4" class="w-full">
+                                <div class="flex justify-between text-xs"><span>1</span><span id="priorityVal">4</span></div>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm mb-3">Риск-аппетит (макс. допустимый балл)</label>
+                            <input type="range" id="riskAppetite" min="4" max="32" value="12" step="1" class="w-full" style="accent-color: var(--success-color)">
+                            <div class="flex justify-between font-mono text-sm">
+                                <span>Низкий</span>
+                                <span id="appetiteValue" class="font-bold text-xl">12</span>
+                                <span>Средний / Высокий</span>
+                            </div>
+                        </div>
+                        <button onclick="saveCriteria()" 
+                                class="w-full py-4 btn btn-primary font-medium">Сохранить критерии</button>
+                    </div>
+                </div>
+            </div>
+            <!-- Таб 2 — Активы -->
+            <div id="content2" class="tab-content hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold">Реестр активов</h2>
+                    <button onclick="addAsset()" class="btn btn-primary flex items-center gap-2">
+                        + Добавить актив
+                    </button>
+                </div>
+                <div id="assetsList" class="grid grid-cols-2 gap-4"></div>
+            </div>
+            <!-- Таб 3 — Риски -->
+            <div id="content3" class="tab-content hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold">Реестр рисков</h2>
+                    <button onclick="addRisk()" class="btn btn-primary flex items-center gap-2">
+                        + Добавить риск
+                    </button>
+                </div>
+                <div id="risksList" class="space-y-4"></div>
+            </div>
+            <!-- Таб 4 — Защитные меры -->
+            <div id="content4" class="tab-content hidden">
+                <h2 class="text-2xl font-bold mb-6">Защитные меры и их влияние</h2>
+                <div id="measuresList" class="grid grid-cols-2 gap-6"></div>
+                <button onclick="addMeasure()" 
+                        class="mt-8 btn btn-primary flex items-center gap-2 mx-auto">
+                    + Создать новую защитную меру
+                </button>
+            </div>
+            <!-- Таб 5 — Экономика -->
+            <div id="content5" class="tab-content hidden">
+                <h2 class="text-2xl font-bold mb-8">Экономическая эффективность внедрения ИБ</h2>
+                <div class="card p-8 mb-8">
+                    <div class="grid grid-cols-2 gap-12">
+                        <div>
+                            <h3 class="font-medium mb-4">Стоимость 1 балла риска</h3>
+                            <input id="costPerPoint" type="number" value="50000" 
+                                   class="w-full text-4xl font-bold text-right bg-transparent focus:outline-none"
+                                   style="border-bottom: 2px solid var(--primary-color)">
+                            <p class="text-sm text-muted">рублей за 1 балл риска</p>
+                        </div>
+                        <div id="economicSummary" class="text-right">
+														<div class="space-y-6">
+																<div>
+																		<div class="text-sm text-muted">До внедрения</div>
+																		<div id="summaryBefore" class="text-4xl font-bold">0 ₽</div>
+																</div>
+																<div>
+																		<div class="text-sm text-muted">После внедрения</div>
+																		<div id="summaryAfter" class="text-4xl font-bold text-success">0 ₽</div>
+																</div>
+																<div class="pt-4 border-t">
+																		<div class="text-sm text-muted">Чистый экономический эффект</div>
+																		<div id="summaryEffect" class="text-5xl font-bold">0 ₽</div>
+																</div>
+														</div>
+												</div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-8">
+                    <div class="card p-8">
+                        <h3 class="font-semibold mb-4">Дополнительные формулы</h3>
+                        <ul class="space-y-6 text-sm" id="formulasList">
+                            <li id="formula1"><strong>1. Риск</strong><br><span class="font-mono">damage × prob × priority</span><br><span class="text-xs text-muted">Базовая оценка риска по ГОСТ</span></li>
+                            <li id="formula2"><strong>2. Остаточный риск</strong><br><span class="font-mono">(damage × (1-rd)) × (prob × (1-rp)) × priority</span></li>
+                            <li id="formula3"><strong>3. ROSI</strong><br><span class="font-mono">(Эффект / Стоимость) × 100%</span><br><span class="text-xs text-muted">Возврат инвестиций в ИБ</span></li>
+                            <li id="formula4"><strong>4. Срок окупаемости</strong><br><span class="font-mono">Стоимость меры / Годовая экономия</span></li>
+                        </ul>
+                    </div>
+                    <div class="card p-8">
+                        <canvas id="chart" width="400" height="300"></canvas>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
+
+    <!-- ТЕМПЛЕЙТЫ -->
+    <template id="assetTemplate">
+        <div class="card flex justify-between items-center">
+            <div>
+                <div class="font-semibold" data-template="name"></div>
+                <div class="text-xs text-muted" data-template="priority"></div>
+            </div>
+            <div class="text-right">
+                <div class="text-2xl font-bold" data-template="value"></div>
+                <button class="text-danger text-xs" data-template="delete-btn">удалить</button>
+            </div>
+        </div>
+    </template>
+    
+    <template id="riskTemplate">
+        <div class="card flex gap-6">
+            <div class="flex-1">
+                <div class="font-medium" data-template="threat"></div>
+                <div class="text-sm text-muted" data-template="vulnerability"></div>
+                <div class="mt-3 text-xs">
+                    Исходный риск: <span class="font-mono font-bold text-danger" data-template="score"></span> баллов
+                </div>
+                <div class="text-xs text-success" data-template="residual-container">Остаточный: <span class="font-bold" data-template="residualScore"></span></div>
+            </div>
+            <div class="flex flex-col gap-2" data-template="buttons">
+                <button class="btn btn-primary text-sm" data-template="apply-measure-btn">Применить меру</button>
+                <button class="btn btn-secondary text-sm" data-template="delete-btn">Удалить</button>
+            </div>
+        </div>
+    </template>
+
+    <template id="measureTemplate">
+        <div class="card">
+            <div class="flex justify-between">
+                <div class="font-semibold" data-template="name"></div>
+                <div class="text-success font-bold" data-template="cost"></div>
+            </div>
+            <div class="text-xs mt-4 text-muted" data-template="reduction"></div>
+            <div class="mt-4 text-sm" data-template="effect-container">
+                Эффект: <span class="font-bold" data-template="effect"></span><br>
+                ROSI: <span class="text-primary" data-template="rosi"></span>
+            </div>
+            <button class="mt-4 text-xs btn btn-secondary" data-template="link-btn">Привязать к риску</button>
+        </div>
+    </template>
+
+    <template id="lastRiskTemplate">
+         <div class="card p-4 text-sm">
+            <div class="font-medium" data-template="threat"></div>
+            <div class="text-xs text-muted" data-template="scores"></div>
+        </div>
+    </template>
 
     <script src="script.js"></script>
 </body>
