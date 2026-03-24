@@ -1,0 +1,123 @@
+/* styles.css */
+:root {
+  --app-background: #0f172a;
+  --header-background: #1e2937;
+  --card-background: #1e2937;
+  --primary-color: #3b82f6;
+  --success-color: #22c55e;
+  --danger-color: #ef4444;
+  --text-primary: #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --text-muted: #64748b;
+  --border-color: #334155;
+  --button-primary-bg: #3b82f6;
+  --button-primary-hover: #2563eb;
+  --button-primary-text: #ffffff;
+  --button-secondary-bg: #334155;
+  --button-secondary-hover: #475569;
+  --button-secondary-text: #f1f5f9;
+  --input-background: #334155;
+  --input-border: #475569;
+  --font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --border-radius: 8px;
+  --shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3);
+}
+
+body {
+    background-color: var(--app-background);
+    color: var(--text-primary);
+    font-family: var(--font-family);
+}
+
+nav {
+    background-color: var(--header-background);
+    border-bottom: 1px solid var(--border-color);
+}
+
+h1 {
+    color: var(--primary-color);
+}
+
+.tab-active {
+    border-bottom: 4px solid var(--primary-color);
+    font-weight: 600;
+    color: var(--text-primary) !important;
+}
+
+nav a {
+    color: var(--text-secondary);
+}
+nav a:hover {
+    color: var(--text-primary);
+}
+
+.card {
+    background-color: var(--card-background);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    box-shadow: var(--shadow);
+    transition: all 0.3s;
+}
+
+.card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3);
+}
+
+.btn {
+    padding: 0.5rem 1rem;
+    border-radius: var(--border-radius);
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+		text-align: center;
+}
+
+.btn-primary {
+    background-color: var(--button-primary-bg);
+    color: var(--button-primary-text);
+}
+.btn-primary:hover {
+    background-color: var(--button-primary-hover);
+}
+
+.btn-danger {
+    background-color: var(--danger-color);
+    color: var(--button-primary-text);
+}
+.btn-danger:hover {
+    opacity: 0.9;
+}
+
+.btn-secondary {
+    background-color: var(--button-secondary-bg);
+    color: var(--button-secondary-text);
+    border: 1px solid var(--border-color);
+}
+.btn-secondary:hover {
+    background-color: var(--button-secondary-hover);
+}
+
+.text-muted {
+    color: var(--text-muted);
+}
+.text-danger {
+    color: var(--danger-color);
+}
+.text-success {
+    color: var(--success-color);
+}
+.text-primary {
+    color: var(--primary-color);
+}
+
+input[type="range"] {
+    accent-color: var(--primary-color);
+}
+
+input, select {
+    background-color: var(--input-background) !important;
+    border: 1px solid var(--input-border) !important;
+    border-radius: var(--border-radius) !important;
+    color: var(--text-primary) !important;
+}

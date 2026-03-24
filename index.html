@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Калькулятор экономической эффективности ИБ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="font-sans">
+    <div class="max-w-7xl mx-auto">
+        <!-- НАВИГАЦИЯ -->
+        <nav class="sticky top-0 z-50">
+            <div class="px-8 py-5 flex items-center justify-between">
+                <h1 class="text-2xl font-bold">ИБ-Эффект</h1>
+                <div class="flex gap-8 text-sm font-medium">
+                    <a onclick="showTab(0)" class="tab-active cursor-pointer" id="tab0">Дашборд</a>
+                    <a onclick="showTab(1)" class="cursor-pointer" id="tab1">Критерии и Риск-аппетит</a>
+                    <a onclick="showTab(2)" class="cursor-pointer" id="tab2">Активы</a>
+                    <a onclick="showTab(3)" class="cursor-pointer" id="tab3">Риски</a>
+                    <a onclick="showTab(4)" class="cursor-pointer" id="tab4">Защитные меры</a>
+                    <a onclick="showTab(5)" class="cursor-pointer" id="tab5">Экономика</a>
+                </div>
+                <button onclick="resetAll()" 
+                        class="btn btn-danger text-sm font-medium">
+                    Сбросить всё
+                </button>
+            </div>
+        </nav>
+
+        <div class="p-8">
+            <!-- Все содержимое табов будет здесь -->
+            <div id="content0" class="tab-content"></div>
+            <div id="content1" class="tab-content hidden"></div>
+            <div id="content2" class="tab-content hidden"></div>
+            <div id="content3" class="tab-content hidden"></div>
+            <div id="content4" class="tab-content hidden"></div>
+            <div id="content5" class="tab-content hidden"></div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
