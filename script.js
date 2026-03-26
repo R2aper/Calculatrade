@@ -62,16 +62,62 @@ function saveCriteria() {
 function addAsset() {
     const name = prompt('Название актива (например: База ПДн)', 'База персональных данных');
     const value = prompt('Стоимость актива', '1000000');
-    const priority = prompt('Приоритет актива', '3');
+    const priority = prompt('Приоритет актива (1-4)', '3');
     if (!name || !value || !priority) return;
+    
+    const prioNum = parseInt(priority);
+    if (isNaN(prioNum) || prioNum < 1 || prioNum > 4) {
+        alert('Приоритет должен быть числом от 1 до 4');
+        return;
+    }
     
     assets.push({
         id: Date.now(),
         name: name,
-        priority: parseInt(priority),
+        priority: prioNum,
         value: parseInt(value)
     });
     renderAssets();
+}
+
+// Пересчет рисков при изменении приоритета актива
+function updateAssetPriority(assetId, newPriority) {
+    if (newPriority < 1 || newPriority > 4) {
+        console.error('Приоритет должен быть от 1 до 4');
+        return;
+    }
+    
+    const asset = assets.find(a => a.id === assetId);
+    if (!asset) return;
+    
+    const oldPriority = asset.priority;
+    asset.priority = newPriority;
+    
+    // Пересчитываем все риски, связанные с этим активом
+    const linkedRisks = risks.filter(r => r.assetId === assetId);
+    let recalculatedCount = 0;
+    
+    linkedRisks.forEach(r => {
+        r.priority = newPriority;
+        r.score = calculateRisk(r.damage, r.probability, r.priority);
+        
+        // Пересчитываем остаточный риск, если мера привязана
+        if (r.residualScore !== null) {
+            r.residualScore = calculateResidualRisk(r, r.reduceDamage, r.reduceProb);
+        }
+        recalculatedCount++;
+    });
+    
+    const message = `✅ Актив "${asset.name}": приоритет ${oldPriority} → ${newPriority}. Пересчитано рисков: ${recalculatedCount}`;
+    console.log(message);
+    
+    // Обновляем UI
+    renderAssets();
+    if (recalculatedCount > 0) {
+        renderRisks();
+        renderMeasures(); // Добавлено: обновляем меры, так как их эффект мог измениться
+        renderDashboard();
+    }
 }
 
 function renderAssets() {
@@ -81,8 +127,26 @@ function renderAssets() {
     assets.forEach(a => {
         const assetEl = template.content.cloneNode(true);
         assetEl.querySelector('[data-template="name"]').textContent = a.name;
-        assetEl.querySelector('[data-template="priority"]').textContent = `Приоритет: ${a.priority}`;
+        
+        // Привязываем ползунок приоритета к функции обновления
+        const priorityInput = assetEl.querySelector('[data-template="priority-container"] input');
+        priorityInput.value = a.priority;
+        priorityInput.onchange = (e) => updateAssetPriority(a.id, parseInt(e.target.value));
+        
+        const priorityValue = assetEl.querySelector('[data-template="priority-value"]');
+        priorityInput.oninput = (e) => {
+            priorityValue.textContent = e.target.value;
+        };
+        
         assetEl.querySelector('[data-template="value"]').textContent = `${a.value.toLocaleString('ru')} ₽`;
+        
+        // Показываем количество рисков для этого актива
+        const riskCount = risks.filter(r => r.assetId === a.id).length;
+        const riskInfo = assetEl.querySelector('[data-template="risk-info"]');
+        if (riskInfo) {
+            riskInfo.textContent = riskCount > 0 ? `${riskCount} риск${riskCount === 1 ? '' : 'ов'} привязано` : 'Нет рисков';
+        }
+        
         assetEl.querySelector('[data-template="delete-btn"]').onclick = () => deleteAsset(a.id);
         container.appendChild(assetEl);
     });
@@ -90,29 +154,48 @@ function renderAssets() {
 
 // ====================== РИСКИ ======================
 function addRisk() {
+    if (assets.length === 0) {
+        alert('❌ Сначала создайте актив!');
+        return;
+    }
+    
     const threat = prompt('Угроза', 'Несанкционированный доступ');
     const vuln = prompt('Уязвимость', 'Отсутствие контроля доступа');
     if (!threat || !vuln) return;
     
+    // Предлагаем выбрать актив
+    let assetList = assets.map((a, idx) => `${idx}: ${a.name} (приоритет: ${a.priority})`).join('\n');
+    const assetIdxStr = prompt(`Выберите актив (введите номер):\n${assetList}`, '0');
+    if (assetIdxStr === null) return;
+    
+    const assetIdx = parseInt(assetIdxStr);
+    if (isNaN(assetIdx) || assetIdx < 0 || assetIdx >= assets.length) {
+        alert('Неверный номер актива');
+        return;
+    }
+    
+    const asset = assets[assetIdx];
+    
     const damage = Math.floor(Math.random() * criteria.damageMax) + 1;
     const prob = Math.floor(Math.random() * criteria.probMax) + 1;
-    const prio = assets.length ? assets[0].priority : 3;
     
+    // Риск создается с приоритетом актива
     risks.push({
         id: Date.now(),
         threat: threat,
         vulnerability: vuln,
-        assetId: assets.length ? assets[0].id : null,
+        assetId: asset.id,
         damage: damage,
         probability: prob,
-        priority: prio,
-        score: calculateRisk(damage, prob, prio),
+        priority: asset.priority,
+        score: calculateRisk(damage, prob, asset.priority),
         residualScore: null,
         measureId: null,
         reduceDamage: 0,
         reduceProb: 0
     });
     
+    console.log(`✅ Риск добавлен к активу "${asset.name}" (приоритет: ${asset.priority})`);
     renderRisks();
     renderDashboard();
 }
@@ -126,7 +209,20 @@ function renderRisks() {
         riskEl.querySelector('[data-template="threat"]').textContent = r.threat;
         riskEl.querySelector('[data-template="vulnerability"]').textContent = r.vulnerability;
         riskEl.querySelector('[data-template="score"]').textContent = r.score;
-        riskEl.querySelector('[data-template="assetId"]').textContent = r.id;
+        
+        // Показываем информацию об активе и приоритете
+        const asset = assets.find(a => a.id === r.assetId);
+        const assetInfoContainer = riskEl.querySelector('[data-template="asset-info"]');
+        if (assetInfoContainer) {
+            if (asset) {
+                assetInfoContainer.textContent = `Актив: ${asset.name} (приоритет: ${r.priority})`;
+            } else {
+                assetInfoContainer.textContent = `ID актива: ${r.assetId} (приоритет: ${r.priority})`;
+            }
+        }
+
+        // Добавляем ID риска для привязки мер
+        riskEl.querySelector('[data-template="riskId"]').textContent = r.id;
 
         const residualContainer = riskEl.querySelector('[data-template="residual-container"]');
         if (r.residualScore !== null) {
@@ -135,19 +231,14 @@ function renderRisks() {
             residualContainer.remove();
         }
         
-        const applyBtn = riskEl.querySelector('[data-template="apply-measure-btn"]');
-        if (r.residualScore === null) {
-            applyBtn.onclick = () => attachMeasureToRisk(r.id);
-        } else {
-            applyBtn.remove();
-        }
-        
         riskEl.querySelector('[data-template="delete-btn"]').onclick = () => deleteRisk(r.id);
         container.appendChild(riskEl);
     });
 }
 
 // ====================== ЗАЩИТНЫЕ МЕРЫ ======================
+let currentMeasureIdForLinking = null;
+
 function addMeasure() {
     const name = prompt('Название защитной меры (например: Система контроля доступа)', 'Многофакторная аутентификация');
     if (!name) return;
@@ -191,26 +282,64 @@ function renderMeasures() {
             linkBtn.remove();
         } else {
             effectContainer.remove();
-            linkBtn.onclick = () => linkMeasure(m.id);
+            linkBtn.onclick = () => openLinkMeasureModal(m.id);
         }
         container.appendChild(measureEl);
     });
 }
 
-function attachMeasureToRisk(riskId) {
-    if (measures.length === 0) {
-        alert('Сначала создайте защитную меру!');
+function openLinkMeasureModal(measureId) {
+    currentMeasureIdForLinking = measureId;
+    const modal = document.getElementById('linkMeasureModal');
+    const select = document.getElementById('riskSelect');
+    
+    // Очищаем предыдущие опции
+    select.innerHTML = '<option value="">Выберите риск...</option>';
+    
+    // Добавляем опции для каждого риска без привязанной меры
+    risks.filter(r => !r.measureId).forEach(r => {
+        const asset = assets.find(a => a.id === r.assetId);
+        const option = document.createElement('option');
+        option.value = r.id;
+        option.textContent = `${r.threat} (${asset ? asset.name : 'Актив ID:' + r.assetId}) - Риск: ${r.score}`;
+        select.appendChild(option);
+    });
+    
+    modal.classList.remove('hidden');
+}
+
+function closeLinkMeasureModal() {
+    document.getElementById('linkMeasureModal').classList.add('hidden');
+    currentMeasureIdForLinking = null;
+}
+
+function confirmLinkMeasure() {
+    const select = document.getElementById('riskSelect');
+    const riskId = select.value;
+    
+    if (!riskId) {
+        alert('Выберите риск!');
         return;
     }
     
-    const risk = risks.find(r => r.id === riskId);
-    const measure = measures[0];
+    const risk = risks.find(r => r.id == riskId);
+    if (!risk) {
+        alert('Риск не найден');
+        return;
+    }
     
-    risk.measureId = measure.id;
+    const measure = measures.find(m => m.id === currentMeasureIdForLinking);
+    if (!measure) {
+        alert('Мера не найдена');
+        return;
+    }
+    
+    risk.measureId = currentMeasureIdForLinking;
     risk.reduceDamage = measure.reduceDamage;
     risk.reduceProb = measure.reduceProb;
     risk.residualScore = calculateResidualRisk(risk, measure.reduceDamage, measure.reduceProb);
     
+    closeLinkMeasureModal();
     renderRisks();
     renderMeasures();
     renderDashboard();
@@ -237,7 +366,22 @@ function linkMeasure(measureId) {
 
 // ====================== УДАЛЕНИЕ ======================
 function deleteAsset(id) { 
+    const asset = assets.find(a => a.id === id);
+    const linkedRisks = risks.filter(r => r.assetId === id);
+    
+    if (linkedRisks.length > 0) {
+        const confirm_delete = confirm(`Актив "${asset.name}" имеет ${linkedRisks.length} риск(ов). Они будут удалены. Продолжить?`);
+        if (!confirm_delete) return;
+    }
+    
     assets = assets.filter(a => a.id !== id); 
+    risks = risks.filter(r => r.assetId !== id);
+    
+    if (linkedRisks.length > 0) {
+        renderRisks();
+        renderDashboard();
+    }
+    
     renderAssets(); 
 }
 
@@ -355,6 +499,10 @@ function initApp() {
     measures = [
         {id: 201, name: 'Многофакторная аутентификация', cost: 380000, reduceDamage: 30, reduceProb: 90}
     ];
+    
+    // Обработчики для модального окна
+    document.getElementById('cancelLinkBtn').onclick = closeLinkMeasureModal;
+    document.getElementById('confirmLinkBtn').onclick = confirmLinkMeasure;
     
     renderAssets();
     renderRisks();

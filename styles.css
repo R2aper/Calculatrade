@@ -121,3 +121,15 @@ input, select {
     border-radius: var(--border-radius) !important;
     color: var(--text-primary) !important;
 }
+
+/* Модальное окно в темной теме */
+#linkMeasureModal .bg-white {
+    background-color: var(--card-background) !important;
+    color: var(--text-primary) !important;
+}
+
+#linkMeasureModal select {
+    background-color: var(--input-background) !important;
+    border: 1px solid var(--input-border) !important;
+    color: var(--text-primary) !important;
+}
