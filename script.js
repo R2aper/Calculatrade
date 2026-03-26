@@ -333,7 +333,7 @@ function initApp() {
     // демо-данные
     assets = [
         {id: 1, name: 'База ПДн', priority: 4, value: 2500000},
-        {id: 2, name: 'Сервер 1С', priority: 3, value: 1200000}
+        {id: 2, name: 'Сервер 1С', priority: 3, value: 120000}
     ];
     
     risks = [
