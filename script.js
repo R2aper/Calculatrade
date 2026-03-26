@@ -126,7 +126,8 @@ function renderRisks() {
         riskEl.querySelector('[data-template="threat"]').textContent = r.threat;
         riskEl.querySelector('[data-template="vulnerability"]').textContent = r.vulnerability;
         riskEl.querySelector('[data-template="score"]').textContent = r.score;
-        
+        riskEl.querySelector('[data-template="assetId"]').textContent = r.id;
+
         const residualContainer = riskEl.querySelector('[data-template="residual-container"]');
         if (r.residualScore !== null) {
             residualContainer.querySelector('[data-template="residualScore"]').textContent = r.residualScore;
