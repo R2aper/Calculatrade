@@ -62,12 +62,13 @@ function saveCriteria() {
 function addAsset() {
     const name = prompt('Название актива (например: База ПДн)', 'База персональных данных');
     const value = prompt('Стоимость актива', '1000000');
-    if (!name || !value) return;
+    const priority = prompt('Приоритет актива', '3');
+    if (!name || !value || !priority) return;
     
     assets.push({
         id: Date.now(),
         name: name,
-        priority: 3,
+        priority: parseInt(priority),
         value: parseInt(value)
     });
     renderAssets();
