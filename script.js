@@ -61,13 +61,14 @@ function saveCriteria() {
 // ====================== АКТИВЫ ======================
 function addAsset() {
     const name = prompt('Название актива (например: База ПДн)', 'База персональных данных');
-    if (!name) return;
+    const value = prompt('Стоимость актива', '1000000');
+    if (!name || !value) return;
     
     assets.push({
         id: Date.now(),
         name: name,
         priority: 3,
-        value: 1000000
+        value: parseInt(value)
     });
     renderAssets();
 }
@@ -176,6 +177,9 @@ function renderMeasures() {
         const linkedRisk = risks.find(r => r.measureId === m.id);
         const effectContainer = measureEl.querySelector('[data-template="effect-container"]');
         const linkBtn = measureEl.querySelector('[data-template="link-btn"]');
+        const deleteBtn = measureEl.querySelector('[data-template="delete-btn"]');
+
+        deleteBtn.onclick = () => deleteMeasure(m.id);
 
         if (linkedRisk) {
             const effect = calculateExpectedLoss(linkedRisk.score) - calculateExpectedLoss(linkedRisk.residualScore);
@@ -239,6 +243,21 @@ function deleteRisk(id) {
     risks = risks.filter(r => r.id !== id); 
     renderRisks(); 
     renderDashboard(); 
+}
+
+function deleteMeasure(id) { 
+    measures = measures.filter(m => m.id !== id); 
+    risks.forEach(r => {
+        if (r.measureId === id) {
+            r.measureId = null;
+            r.reduceDamage = 0;
+            r.reduceProb = 0;
+            r.residualScore = null;
+        }
+    });
+    renderMeasures(); 
+    renderRisks(); 
+    renderDashboard();
 }
 
 // ====================== ДАШБОРД ======================
