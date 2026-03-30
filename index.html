@@ -4,24 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Калькулятор экономической эффективности ИБ</title>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body class="font-sans">
-    <div class="max-w-7xl mx-auto">
+    <div class="max-w-7xl mx-auto" x-data="app()" @alpine:init="init()">
         <!-- НАВИГАЦИЯ -->
         <nav class="sticky top-0 z-50">
             <div class="px-8 py-5 flex items-center justify-between">
                 <h1 class="text-2xl font-bold">ИБ-Эффект</h1>
                 <div class="flex gap-8 text-sm font-medium">
-                    <a onclick="showTab(0)" class="tab-active cursor-pointer" id="tab0">Дашборд</a>
-                    <a onclick="showTab(1)" class="cursor-pointer" id="tab1">Критерии и Риск-аппетит</a>
-                    <a onclick="showTab(2)" class="cursor-pointer" id="tab2">Активы</a>
-                    <a onclick="showTab(3)" class="cursor-pointer" id="tab3">Риски</a>
-                    <a onclick="showTab(4)" class="cursor-pointer" id="tab4">Защитные меры</a>
-                    <a onclick="showTab(5)" class="cursor-pointer" id="tab5">Экономика</a>
+                    <a @click="showTab(0)" :class="currentTab === 0 && 'tab-active'" class="cursor-pointer" id="tab0">Дашборд</a>
+                    <a @click="showTab(1)" :class="currentTab === 1 && 'tab-active'" class="cursor-pointer" id="tab1">Критерии и Риск-аппетит</a>
+                    <a @click="showTab(2)" :class="currentTab === 2 && 'tab-active'" class="cursor-pointer" id="tab2">Активы</a>
+                    <a @click="showTab(3)" :class="currentTab === 3 && 'tab-active'" class="cursor-pointer" id="tab3">Риски</a>
+                    <a @click="showTab(4)" :class="currentTab === 4 && 'tab-active'" class="cursor-pointer" id="tab4">Защитные меры</a>
+                    <a @click="showTab(5)" :class="currentTab === 5 && 'tab-active'" class="cursor-pointer" id="tab5">Экономика</a>
                 </div>
-                <button onclick="resetAll()" 
+                <button @click="resetAll()" 
                         class="btn btn-danger text-sm font-medium">
                     Сбросить всё
                 </button>
@@ -30,35 +31,42 @@
 
         <div class="p-8">
             <!-- Таб 0 — Дашборд -->
-            <div id="content0" class="tab-content">
+            <div x-show="currentTab === 0">
                 <div class="grid grid-cols-4 gap-6">
                     <div class="card">
                         <p class="text-muted text-sm">Общий риск до мер</p>
-                        <p id="totalRiskBefore" class="text-5xl font-bold text-danger mt-2">0</p>
+                        <p class="text-5xl font-bold text-danger mt-2" x-text="totalRiskBefore">0</p>
                         <p class="text-xs text-muted">баллов по всем рискам</p>
                     </div>
                     <div class="card">
                         <p class="text-muted text-sm">Общий риск после мер</p>
-                        <p id="totalRiskAfter" class="text-5xl font-bold text-success mt-2">0</p>
+                        <p class="text-5xl font-bold text-success mt-2" x-text="totalRiskAfter">0</p>
                         <p class="text-xs text-muted">баллов</p>
                     </div>
                     <div class="card">
                         <p class="text-muted text-sm">Экономический эффект</p>
-                        <p id="totalEffect" class="text-5xl font-bold text-success mt-2">0 ₽</p>
+                        <p class="text-5xl font-bold text-success mt-2" x-text="totalEffect.toLocaleString('ru') + ' ₽'">0 ₽</p>
                         <p class="text-xs text-muted">за год</p>
                     </div>
                     <div class="card">
                         <p class="text-muted text-sm">Средний ROI</p>
-                        <p id="avgROI" class="text-5xl font-bold text-primary mt-2">0%</p>
+                        <p class="text-5xl font-bold text-primary mt-2" x-text="avgROI + '%'">0%</p>
                     </div>
                 </div>
                 <div class="mt-10">
                     <h2 class="text-xl font-semibold mb-4">Последние риски</h2>
-                    <div id="lastRisks" class="grid grid-cols-3 gap-4"></div>
+                    <div class="grid grid-cols-3 gap-4">
+                        <template x-for="r in lastRisks" :key="r.id">
+                            <div class="card p-4 text-sm">
+                                <div class="font-medium" x-text="r.threat"></div>
+                                <div class="text-xs text-muted" x-text="`${r.score} → ${r.residualScore || '—'}`"></div>
+                            </div>
+                        </template>
+                    </div>
                 </div>
             </div>
             <!-- Таб 1 — Критерии -->
-            <div id="content1" class="tab-content hidden">
+            <div x-show="currentTab === 1">
                 <div class="max-w-2xl mx-auto card p-8">
                     <h2 class="text-2xl font-bold mb-6">Настройка критериев (ГОСТ Р 27005)</h2>
                     <div class="space-y-8">
@@ -69,187 +77,305 @@
                         <div class="grid grid-cols-3 gap-6">
                             <div>
                                 <label class="block text-sm mb-1">Уровень ущерба (баллы)</label>
-                                <input type="range" id="damageMax" min="1" max="4" value="4" class="w-full">
-                                <div class="flex justify-between text-xs"><span>1</span><span id="damageVal">4</span></div>
+                                <input type="range" id="damageMax" min="1" max="4" x-model.number="criteria.damageMax" class="w-full">
+                                <div class="flex justify-between text-xs"><span>1</span><span x-text="criteria.damageMax">4</span></div>
                             </div>
                             <div>
                                 <label class="block text-sm mb-1">Вероятность (баллы)</label>
-                                <input type="range" id="probMax" min="1" max="4" value="4" class="w-full">
-                                <div class="flex justify-between text-xs"><span>1</span><span id="probVal">4</span></div>
+                                <input type="range" id="probMax" min="1" max="4" x-model.number="criteria.probMax" class="w-full">
+                                <div class="flex justify-between text-xs"><span>1</span><span x-text="criteria.probMax">4</span></div>
                             </div>
                             <div>
                                 <label class="block text-sm mb-1">Приоритет актива (баллы)</label>
-                                <input type="range" id="priorityMax" min="1" max="4" value="4" class="w-full">
-                                <div class="flex justify-between text-xs"><span>1</span><span id="priorityVal">4</span></div>
+                                <input type="range" id="priorityMax" min="1" max="4" x-model.number="criteria.priorityMax" class="w-full">
+                                <div class="flex justify-between text-xs"><span>1</span><span x-text="criteria.priorityMax">4</span></div>
                             </div>
                         </div>
                         <div>
                             <label class="block text-sm mb-3">Риск-аппетит (макс. допустимый балл)</label>
-                            <input type="range" id="riskAppetite" min="4" max="32" value="12" step="1" class="w-full" style="accent-color: var(--success-color)">
+                            <input type="range" id="riskAppetite" min="4" max="32" x-model.number="criteria.riskAppetite" step="1" class="w-full" style="accent-color: var(--success-color)">
                             <div class="flex justify-between font-mono text-sm">
                                 <span>Низкий</span>
-                                <span id="appetiteValue" class="font-bold text-xl">12</span>
+                                <span class="font-bold text-xl" x-text="criteria.riskAppetite">12</span>
                                 <span>Средний / Высокий</span>
                             </div>
                         </div>
-                        <button onclick="saveCriteria()" 
+                        <div>
+                            <label class="block text-sm mb-3">Стоимость 1 балла риска</label>
+                            <input id="costPerPoint" type="number" x-model.number="criteria.costPerPoint" 
+                                   class="w-full px-3 py-2 text-2xl font-bold"
+                                   placeholder="50000">
+                            <p class="text-xs text-muted mt-1">рублей</p>
+                        </div>
+                        <button @click="saveCriteria()" 
                                 class="w-full py-4 btn btn-primary font-medium">Сохранить критерии</button>
                     </div>
                 </div>
             </div>
             <!-- Таб 2 — Активы -->
-            <div id="content2" class="tab-content hidden">
+            <div x-show="currentTab === 2">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-2xl font-bold">Реестр активов</h2>
-                    <button onclick="addAsset()" class="btn btn-primary flex items-center gap-2">
+                    <button @click="openAddAssetModal()" class="btn btn-primary flex items-center gap-2">
                         + Добавить актив
                     </button>
                 </div>
-                <div id="assetsList" class="grid grid-cols-2 gap-4"></div>
+                <div class="grid grid-cols-2 gap-4">
+                    <template x-for="a in assets" :key="a.id">
+                        <div class="card flex justify-between items-center">
+                            <div class="flex-1">
+                                <div class="font-semibold" x-text="a.name"></div>
+                                <div class="mt-3">
+                                    <label class="text-xs text-muted">Приоритет актива</label>
+                                    <div class="flex items-center gap-3">
+                                        <input type="range" min="1" max="4" x-model.number="a.priority" @change="updateAssetPriority(a.id, a.priority)" class="flex-1" style="accent-color: var(--primary-color)">
+                                        <span class="font-mono font-bold text-primary" x-text="a.priority">3</span>
+                                    </div>
+                                </div>
+                                <div class="text-xs text-muted mt-2" x-text="`${getRiskCountForAsset(a.id)} риск${getRiskCountForAsset(a.id) === 1 ? '' : 'ов'} привязано`"></div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-2xl font-bold" x-text="`${a.value.toLocaleString('ru')} ₽`"></div>
+                                <button @click="deleteAsset(a.id)" class="text-danger text-xs">удалить</button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
             </div>
             <!-- Таб 3 — Риски -->
-            <div id="content3" class="tab-content hidden">
+            <div x-show="currentTab === 3">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-2xl font-bold">Реестр рисков</h2>
-                    <button onclick="addRisk()" class="btn btn-primary flex items-center gap-2">
+                    <button @click="openAddRiskModal()" class="btn btn-primary flex items-center gap-2">
                         + Добавить риск
                     </button>
                 </div>
-                <div id="risksList" class="space-y-4"></div>
+                <div class="space-y-4">
+                    <template x-for="r in risks" :key="r.id">
+                        <div class="card flex gap-6">
+                            <div class="flex-1">
+                                <div class="font-medium" x-text="r.threat"></div>
+                                <div class="text-sm text-muted" x-text="r.vulnerability"></div>
+                                <div class="mt-3 text-xs p-2 rounded">
+                                    <strong>Связь:</strong> <span x-text="`Актив: ${assets.find(a => a.id === r.assetId)?.name || 'N/A'} (приоритет: ${r.priority})`"></span>
+                                </div>
+                                <div class="mt-3 text-xs">
+                                    <strong>ID риска:</strong> <span class="font-mono font-bold text-primary" x-text="r.id"></span>
+                                </div>
+                                <div class="mt-3 text-xs">
+                                    Исходный риск: <span class="font-mono font-bold text-danger" x-text="r.score"></span> баллов
+                                </div>
+                                <div x-show="r.residualScore !== null" class="text-xs text-success">Остаточный: <span class="font-bold" x-text="r.residualScore"></span></div>
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <button @click="deleteRisk(r.id)" class="btn btn-secondary text-sm">Удалить</button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
             </div>
             <!-- Таб 4 — Защитные меры -->
-            <div id="content4" class="tab-content hidden">
+            <div x-show="currentTab === 4">
                 <h2 class="text-2xl font-bold mb-6">Защитные меры и их влияние</h2>
-                <div id="measuresList" class="grid grid-cols-2 gap-6"></div>
-                <button onclick="addMeasure()" 
+                <div class="grid grid-cols-2 gap-6">
+                    <template x-for="m in measures" :key="m.id">
+                        <div class="card">
+                            <div class="flex justify-between">
+                                <div class="font-semibold" x-text="m.name"></div>
+                                <div class="text-success font-bold" x-text="`${m.cost.toLocaleString('ru')} ₽`"></div>
+                            </div>
+                            <div class="text-xs mt-4 text-muted" x-text="`Снижение ущерба: ${m.reduceDamage}% | Вероятности: ${m.reduceProb}%`"></div>
+                            <template x-if="getEffectForMeasure(m)">
+                                <div class="mt-4 text-sm">
+                                    <span>Эффект: <span class="font-bold" x-text="`${getEffectForMeasure(m).effect.toLocaleString('ru')} ₽`"></span></span><br>
+                                    <span>ROSI: <span class="text-primary" x-text="`${getEffectForMeasure(m).rosi}%`"></span></span>
+                                </div>
+                            </template>
+                            <template x-if="!getEffectForMeasure(m)">
+                                <button @click="openLinkMeasureModal(m.id)" class="mt-4 text-xs btn btn-secondary">Привязать к риску</button>
+                            </template>
+                            <button @click="deleteMeasure(m.id)" class="mt-4 text-xs btn btn-danger">Удалить</button>
+                        </div>
+                    </template>
+                </div>
+                <button @click="openAddMeasureModal()" 
                         class="mt-8 btn btn-primary flex items-center gap-2 mx-auto">
                     + Создать новую защитную меру
                 </button>
             </div>
             <!-- Таб 5 — Экономика -->
-            <div id="content5" class="tab-content hidden">
+            <div x-show="currentTab === 5">
                 <h2 class="text-2xl font-bold mb-8">Экономическая эффективность внедрения ИБ</h2>
                 <div class="card p-8 mb-8">
-                    <div class="grid grid-cols-2 gap-12">
-                        <div>
-                            <h3 class="font-medium mb-4">Стоимость 1 балла риска</h3>
-                            <input id="costPerPoint" type="number" value="50000" 
-                                   class="w-full text-4xl font-bold text-right bg-transparent focus:outline-none"
-                                   style="border-bottom: 2px solid var(--primary-color)">
-                            <p class="text-sm text-muted">рублей за 1 балл риска</p>
+                    <div class="flex justify-center">
+                        <div id="economicSummary" class="text-center">
+                            <div class="space-y-6">
+                                <div>
+                                    <div class="text-sm text-muted">Ожидаемые потери до внедрения</div>
+                                    <div class="text-5xl font-bold text-danger" x-text="`${economicSummaryBefore.toLocaleString('ru')} ₽`">0 ₽</div>
+                                </div>
+                                <div class="flex items-center justify-center">
+                                    <div class="text-3xl">→</div>
+                                </div>
+                                <div>
+                                    <div class="text-sm text-muted">Ожидаемые потери после внедрения</div>
+                                    <div class="text-5xl font-bold text-success" x-text="`${economicSummaryAfter.toLocaleString('ru')} ₽`">0 ₽</div>
+                                </div>
+                                <div class="pt-6 border-t-2 border-primary">
+                                    <div class="text-sm text-muted">Чистый экономический эффект</div>
+                                    <div class="text-6xl font-bold" :class="economicTotalEffect > 0 ? 'text-success' : 'text-danger'" x-text="`${economicTotalEffect.toLocaleString('ru')} ₽`">0 ₽</div>
+                                </div>
+                            </div>
                         </div>
-                        <div id="economicSummary" class="text-right">
-														<div class="space-y-6">
-																<div>
-																		<div class="text-sm text-muted">До внедрения</div>
-																		<div id="summaryBefore" class="text-4xl font-bold">0 ₽</div>
-																</div>
-																<div>
-																		<div class="text-sm text-muted">После внедрения</div>
-																		<div id="summaryAfter" class="text-4xl font-bold text-success">0 ₽</div>
-																</div>
-																<div class="pt-4 border-t">
-																		<div class="text-sm text-muted">Чистый экономический эффект</div>
-																		<div id="summaryEffect" class="text-5xl font-bold">0 ₽</div>
-																</div>
-														</div>
-												</div>
-                    </div>
-                </div>
-                <div class="grid grid-cols-2 gap-8">
-                    <div class="card p-8">
-                        <h3 class="font-semibold mb-4">Дополнительные формулы</h3>
-                        <ul class="space-y-6 text-sm" id="formulasList">
-                            <li id="formula1"><strong>1. Риск</strong><br><span class="font-mono">damage × prob × priority</span><br><span class="text-xs text-muted">Базовая оценка риска по ГОСТ</span></li>
-                            <li id="formula2"><strong>2. Остаточный риск</strong><br><span class="font-mono">(damage × (1-rd)) × (prob × (1-rp)) × priority</span></li>
-                            <li id="formula3"><strong>3. ROSI</strong><br><span class="font-mono">(Эффект / Стоимость) × 100%</span><br><span class="text-xs text-muted">Возврат инвестиций в ИБ</span></li>
-                            <li id="formula4"><strong>4. Срок окупаемости</strong><br><span class="font-mono">Стоимость меры / Годовая экономия</span></li>
-                        </ul>
-                    </div>
-                    <div class="card p-8">
-                        <canvas id="chart" width="400" height="300"></canvas>
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <!-- ТЕМПЛЕЙТЫ -->
-    <template id="assetTemplate">
-        <div class="card flex justify-between items-center">
-            <div class="flex-1">
-                <div class="font-semibold" data-template="name"></div>
-                <div class="mt-3" data-template="priority-container">
-                    <label class="text-xs text-muted">Приоритет актива</label>
-                    <div class="flex items-center gap-3">
-                        <input type="range" min="1" max="4" class="flex-1" style="accent-color: var(--primary-color)">
-                        <span class="font-mono font-bold text-primary" data-template="priority-value">3</span>
+            <!-- МОДАЛЬНОЕ ОКНО ДЛЯ ПРИВЯЗКИ МЕРЫ - ВНУТРИ КОНТЕКСТА ПРИЛОЖЕНИЯ -->
+            <div x-show="linkMeasureModalOpen" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+                <div class="rounded-lg p-6 max-w-md w-full mx-4" style="background-color: var(--card-background); color: var(--text-primary);">
+                    <h3 class="text-lg font-semibold mb-4">Привязать защитную меру к риску</h3>
+                    <select id="riskSelect" class="w-full p-2 rounded mb-4">
+                        <option value="">Выберите риск...</option>
+                        <template x-for="risk in getAvailableRisksForLinking()" :key="risk.id">
+                            <option :value="risk.id" x-text="risk.label"></option>
+                        </template>
+                    </select>
+                    <div class="flex gap-2 justify-end">
+                        <button @click="closeLinkMeasureModal()" class="btn btn-secondary">Отмена</button>
+                        <button @click="confirmLinkMeasure()" class="btn btn-primary">Привязать</button>
                     </div>
                 </div>
-                <div class="text-xs text-muted mt-2" data-template="risk-info"></div>
             </div>
-            <div class="text-right">
-                <div class="text-2xl font-bold" data-template="value"></div>
-                <button class="text-danger text-xs" data-template="delete-btn">удалить</button>
-            </div>
-        </div>
-    </template>
-    
-    <template id="riskTemplate">
-        <div class="card flex gap-6">
-            <div class="flex-1">
-                <div class="font-medium" data-template="threat"></div>
-                <div class="text-sm text-muted" data-template="vulnerability"></div>
-                <div class="mt-3 text-xs p-2 rounded">
-                    <strong>Связь:</strong> <span data-template="asset-info"></span>
-                </div>
-                <div class="mt-3 text-xs">
-                    <strong>ID риска:</strong> <span class="font-mono font-bold text-primary" data-template="riskId"></span>
-                </div>
-                <div class="mt-3 text-xs">
-                    Исходный риск: <span class="font-mono font-bold text-danger" data-template="score"></span> баллов
-                </div>
-                <div class="text-xs text-success" data-template="residual-container">Остаточный: <span class="font-bold" data-template="residualScore"></span></div>
-            </div>
-            <div class="flex flex-col gap-2" data-template="buttons">
-                <button class="btn btn-secondary text-sm" data-template="delete-btn">Удалить</button>
-            </div>
-        </div>
-    </template>
 
-    <template id="measureTemplate">
-        <div class="card">
-            <div class="flex justify-between">
-                <div class="font-semibold" data-template="name"></div>
-                <div class="text-success font-bold" data-template="cost"></div>
+            <!-- МОДАЛЬНОЕ ОКНО ДОБАВЛЕНИЯ АКТИВА -->
+            <div x-show="addAssetModalOpen" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+                <div class="rounded-lg p-6 max-w-md w-full mx-4" style="background-color: var(--card-background); color: var(--text-primary);">
+                    <h3 class="text-lg font-semibold mb-4">Добавить актив</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm mb-1" style="color: var(--text-secondary);">Название актива</label>
+                            <input type="text" x-model="assetForm.name" placeholder="Например: Сервер базы данных" class="w-full p-2 rounded border" style="background-color: var(--input-background); border-color: var(--border-color); color: var(--text-primary);">
+                        </div>
+                        <div>
+                            <label class="block text-sm mb-1" style="color: var(--text-secondary);">Стоимость (₽)</label>
+                            <input type="number" x-model.number="assetForm.value" placeholder="1000000" class="w-full p-2 rounded border" style="background-color: var(--input-background); border-color: var(--border-color); color: var(--text-primary);">
+                        </div>
+                        <div>
+                            <label class="block text-sm mb-1" style="color: var(--text-secondary);">Приоритет (1-4)</label>
+                            <select x-model.number="assetForm.priority" class="w-full p-2 rounded border" style="background-color: var(--input-background); border-color: var(--border-color); color: var(--text-primary);">
+                                <option value="1">1 - Минимальный</option>
+                                <option value="2">2 - Низкий</option>
+                                <option value="3">3 - Средний</option>
+                                <option value="4">4 - Высокий</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex gap-2 justify-end mt-6">
+                        <button @click="closeAddAssetModal()" class="btn btn-secondary">Отмена</button>
+                        <button @click="submitAsset()" class="btn btn-primary">Добавить</button>
+                    </div>
+                </div>
             </div>
-            <div class="text-xs mt-4 text-muted" data-template="reduction"></div>
-            <div class="mt-4 text-sm" data-template="effect-container">
-                Эффект: <span class="font-bold" data-template="effect"></span><br>
-                ROSI: <span class="text-primary" data-template="rosi"></span>
+
+            <!-- МОДАЛЬНОЕ ОКНО ДОБАВЛЕНИЯ РИСКА -->
+            <div x-show="addRiskModalOpen" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+                <div class="rounded-lg p-6 max-w-md w-full mx-4" style="background-color: var(--card-background); color: var(--text-primary);">
+                    <h3 class="text-lg font-semibold mb-4">Добавить риск</h3>
+                    <div class="space-y-4 max-h-96 overflow-y-auto">
+                        <div>
+                            <label class="block text-sm mb-1" style="color: var(--text-secondary);">Угроза</label>
+                            <input type="text" x-model="riskForm.threat" placeholder="Например: Компрометация учетных данных" class="w-full p-2 rounded border" style="background-color: var(--input-background); border-color: var(--border-color); color: var(--text-primary);">
+                        </div>
+                        <div>
+                            <label class="block text-sm mb-1" style="color: var(--text-secondary);">Уязвимость</label>
+                            <input type="text" x-model="riskForm.vulnerability" placeholder="Например: Слабый пароль" class="w-full p-2 rounded border" style="background-color: var(--input-background); border-color: var(--border-color); color: var(--text-primary);">
+                        </div>
+                        <div>
+                            <label class="block text-sm mb-1" style="color: var(--text-secondary);">Выберите актив</label>
+                            <select x-model.number="riskForm.assetId" class="w-full p-2 rounded border" style="background-color: var(--input-background); border-color: var(--border-color); color: var(--text-primary);">
+                                <option value="">Выберите актив...</option>
+                                <template x-for="asset in assets" :key="asset.id">
+                                    <option :value="asset.id" x-text="asset.name"></option>
+                                </template>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm mb-1" style="color: var(--text-secondary);">Ущерб (1 - минимальный, 4 - критический)</label>
+                            <div class="flex items-center gap-3">
+                                <input type="range" x-model.number="riskForm.damage" min="1" max="4" class="flex-1">
+                                <span class="text-sm font-semibold w-8 text-center" x-text="riskForm.damage">1</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm mb-1" style="color: var(--text-secondary);">Вероятность (1 - минимальная, 4 - высокая)</label>
+                            <div class="flex items-center gap-3">
+                                <input type="range" x-model.number="riskForm.probability" min="1" max="4" class="flex-1">
+                                <span class="text-sm font-semibold w-8 text-center" x-text="riskForm.probability">1</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex gap-2 justify-end mt-6">
+                        <button @click="closeAddRiskModal()" class="btn btn-secondary">Отмена</button>
+                        <button @click="submitRisk()" class="btn btn-primary">Добавить</button>
+                    </div>
+                </div>
             </div>
-            <button class="mt-4 text-xs btn btn-secondary" data-template="link-btn">Привязать к риску</button>
-            <button class="mt-4 text-xs btn btn-danger" data-template="delete-btn">Удалить</button>
-        </div>
-    </template>
 
-    <template id="lastRiskTemplate">
-         <div class="card p-4 text-sm">
-            <div class="font-medium" data-template="threat"></div>
-            <div class="text-xs text-muted" data-template="scores"></div>
-        </div>
-    </template>
+            <!-- МОДАЛЬНОЕ ОКНО ДОБАВЛЕНИЯ ЗАЩИТНОЙ МЕРЫ -->
+            <div x-show="addMeasureModalOpen" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+                <div class="rounded-lg p-6 max-w-md w-full mx-4" style="background-color: var(--card-background); color: var(--text-primary);">
+                    <h3 class="text-lg font-semibold mb-4">Добавить защитную меру</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm mb-1" style="color: var(--text-secondary);">Название меры</label>
+                            <input type="text" x-model="measureForm.name" placeholder="Например: Двухфакторная аутентификация" class="w-full p-2 rounded border" style="background-color: var(--input-background); border-color: var(--border-color); color: var(--text-primary);">
+                        </div>
+                        <div>
+                            <label class="block text-sm mb-1" style="color: var(--text-secondary);">Стоимость (₽)</label>
+                            <input type="number" x-model.number="measureForm.cost" placeholder="50000" class="w-full p-2 rounded border" style="background-color: var(--input-background); border-color: var(--border-color); color: var(--text-primary);">
+                        </div>
+                        <div>
+                            <label class="block text-sm mb-1" style="color: var(--text-secondary);">Снижение ущерба (%)</label>
+                            <div class="flex items-center gap-3">
+                                <input type="range" x-model.number="measureForm.reduceDamage" min="0" max="100" step="5" class="flex-1">
+                                <span class="text-sm font-semibold w-12 text-center" x-text="`${measureForm.reduceDamage}%`">0%</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm mb-1" style="color: var(--text-secondary);">Снижение вероятности (%)</label>
+                            <div class="flex items-center gap-3">
+                                <input type="range" x-model.number="measureForm.reduceProb" min="0" max="100" step="5" class="flex-1">
+                                <span class="text-sm font-semibold w-12 text-center" x-text="`${measureForm.reduceProb}%`">0%</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex gap-2 justify-end mt-6">
+                        <button @click="closeAddMeasureModal()" class="btn btn-secondary">Отмена</button>
+                        <button @click="submitMeasure()" class="btn btn-primary">Добавить</button>
+                    </div>
+                </div>
+            </div>
 
-    <!-- МОДАЛЬНОЕ ОКНО ДЛЯ ПРИВЯЗКИ МЕРЫ -->
-    <div id="linkMeasureModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
-        <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 class="text-lg font-semibold mb-4">Привязать защитную меру к риску</h3>
-            <select id="riskSelect" class="w-full p-2 border border-gray-300 rounded mb-4">
-                <!-- Опции будут заполнены JavaScript -->
-            </select>
-            <div class="flex gap-2 justify-end">
-                <button id="cancelLinkBtn" class="btn btn-secondary">Отмена</button>
-                <button id="confirmLinkBtn" class="btn btn-primary">Привязать</button>
+            <!-- МОДАЛЬНОЕ ОКНО УВЕДОМЛЕНИЙ -->
+            <div x-show="notification.show" @click.self="hideNotification()" class="fixed inset-0 z-50 flex items-start justify-center pt-8">
+                <div 
+                    :class="{
+                        'bg-success': notification.type === 'success',
+                        'bg-danger': notification.type === 'error',
+                        'bg-info': notification.type === 'info'
+                    }"
+                    class="rounded-lg px-6 py-4 max-w-md w-full mx-4 shadow-lg transform transition-all duration-300"
+                    style="color: white; font-weight: 500;"
+                    x-text="notification.message"
+                    x-transition:enter="transition ease-out duration-300"
+                    x-transition:enter-start="opacity-0 transform scale-90 -translate-y-4"
+                    x-transition:enter-end="opacity-100 transform scale-100 translate-y-0"
+                    x-transition:leave="transition ease-in duration-200"
+                    x-transition:leave-start="opacity-100 transform scale-100 translate-y-0"
+                    x-transition:leave-end="opacity-0 transform scale-90 -translate-y-4"
+                >
+                </div>
             </div>
         </div>
     </div>

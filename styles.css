@@ -133,3 +133,16 @@ input, select {
     border: 1px solid var(--input-border) !important;
     color: var(--text-primary) !important;
 }
+
+/* ====================== КЛАССЫ ДЛЯ УВЕДОМЛЕНИЙ ====================== */
+.bg-success {
+    background-color: var(--success-color) !important;
+}
+
+.bg-danger {
+    background-color: var(--danger-color) !important;
+}
+
+.bg-info {
+    background-color: var(--primary-color) !important;
+}
