@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,6 +9,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
+
 <body class="font-sans">
     <div class="layout-wrapper" x-data="app()" @alpine:init="init()">
         <!-- SIDEBAR -->
@@ -28,115 +30,173 @@
         <!-- MAIN CONTENT -->
         <div class="main-content">
             <div class="header">
-                <h1 style="margin: 0; font-size: 1.5rem;">Калькулятор экономической эффективности ИБ</h1>
-                <button @click="resetAll()" class="btn btn-danger">🔄 Сбросить всё</button>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <h1 style="margin: 0; font-size: 1.5rem;">Калькулятор экономической эффективности ИБ</h1>
+                </div>
+
+                <!-- Кнопка авторизации -->
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <button @click="toggleAuthModal()" class="btn btn-secondary" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem;">
+                    <span x-text="isLoggedIn ? currentUser.name : '👤 Войти'"></span>
+                </button>
+
+                    <button @click="resetAll()" class="btn btn-danger">🔄 Сбросить всё</button>
+                </div>
             </div>
 
             <div class="content-area">
-            <!-- Таб 0 — Дашборд -->
-            <div x-show="currentTab === 0">
-                <h2 class="section-title">Дашборд</h2>
-                <div class="data-grid cols-4">
-                    <div class="stat-card">
-                        <div class="stat-label">Общий риск до мер</div>
-                        <div class="stat-value text-danger" x-text="totalRiskBefore" style="color: var(--danger-color);">0</div>
-                        <div class="stat-label" style="margin-top: 0.5rem;">баллов по всем рискам</div>
-                    </div>
-                    <div class="stat-card success">
-                        <div class="stat-label">Общий риск после мер</div>
-                        <div class="stat-value text-success" x-text="totalRiskAfter" style="color: var(--success-color);">0</div>
-                        <div class="stat-label" style="margin-top: 0.5rem;">баллов</div>
-                    </div>
-                    <div class="stat-card success">
-                        <div class="stat-label">Экономический эффект</div>
-                        <div class="stat-value text-success" x-text="totalEffect.toLocaleString('ru') + ' ₽'" style="color: var(--success-color); font-size: 1.5rem;">0 ₽</div>
-                        <div class="stat-label" style="margin-top: 0.5rem;">в год</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-label">Средний ROI</div>
-                        <div class="stat-value" x-text="avgROI + '%'">0%</div>
-                        <div class="stat-label" style="margin-top: 0.5rem;">средний</div>
+
+                <!-- МОДАЛЬНОЕ ОКНО АВТОРИЗАЦИИ -->
+                <div x-show="authModalOpen" class="modal-overlay" @click.self="toggleAuthModal()">
+                    <div class="modal" style="max-width: 420px;">
+                        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
+                            <span x-text="authTab === 'login' ? 'Вход в систему' : 'Создание профиля'"></span>
+                            <button @click="toggleAuthModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);">×</button>
+                        </div>
+
+                        <!-- Переключение вкладок -->
+                        <div style="display: flex; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-color);">
+                            <button @click="switchAuthTab('login')" :class="authTab === 'login' ? 'tab-active' : ''" style="flex: 1; padding: 0.75rem; background: none; border: none; font-weight: 500;">
+                    Вход
+                </button>
+                            <button @click="switchAuthTab('register')" :class="authTab === 'register' ? 'tab-active' : ''" style="flex: 1; padding: 0.75rem; background: none; border: none; font-weight: 500;">
+                    Регистрация
+                </button>
+                        </div>
+
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label class="form-label">Логин / Email</label>
+                                <input type="text" x-model="authForm.login" placeholder="user@example.com" class="form-input" />
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Пароль</label>
+                                <input type="password" x-model="authForm.password" placeholder="••••••••" class="form-input" />
+                            </div>
+                        </div>
+
+                        <div class="modal-footer">
+                            <button @click="toggleAuthModal()" class="btn btn-secondary">Отмена</button>
+
+                            <template x-if="authTab === 'login'">
+                    <button @click="submitLogin()" class="btn btn-primary">Войти</button>
+                </template>
+                            <template x-if="authTab === 'register'">
+                    <button @click="submitRegister()" class="btn btn-primary">Создать профиль</button>
+                </template>
+                        </div>
+
+                        <!-- Кнопка выхода (показывается только если уже авторизован) -->
+                        <div x-show="isLoggedIn" style="margin-top: 1rem; text-align: center;">
+                            <button @click="logout()" class="text-danger text-sm">Выйти из аккаунта</button>
+                        </div>
                     </div>
                 </div>
-                <div style="margin-top: 2rem;">
-                    <h3 class="text-lg font-semibold mb-4">Последние добавленные риски</h3>
-                    <div class="data-grid cols-3">
-                        <template x-for="r in lastRisks" :key="r.id">
+
+                <!-- Таб 0 — Дашборд -->
+                <div x-show="currentTab === 0">
+                    <h2 class="section-title">Дашборд</h2>
+                    <div class="data-grid cols-4">
+                        <div class="stat-card">
+                            <div class="stat-label">Общий риск до мер</div>
+                            <div class="stat-value text-danger" x-text="totalRiskBefore" style="color: var(--danger-color);">0</div>
+                            <div class="stat-label" style="margin-top: 0.5rem;">баллов по всем рискам</div>
+                        </div>
+                        <div class="stat-card success">
+                            <div class="stat-label">Общий риск после мер</div>
+                            <div class="stat-value text-success" x-text="totalRiskAfter" style="color: var(--success-color);">0</div>
+                            <div class="stat-label" style="margin-top: 0.5rem;">баллов</div>
+                        </div>
+                        <div class="stat-card success">
+                            <div class="stat-label">Экономический эффект</div>
+                            <div class="stat-value text-success" x-text="totalEffect.toLocaleString('ru') + ' ₽'" style="color: var(--success-color); font-size: 1.5rem;">0 ₽</div>
+                            <div class="stat-label" style="margin-top: 0.5rem;">в год</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Средний ROI</div>
+                            <div class="stat-value" x-text="avgROI + '%'">0%</div>
+                            <div class="stat-label" style="margin-top: 0.5rem;">средний</div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 2rem;">
+                        <h3 class="text-lg font-semibold mb-4">Последние добавленные риски</h3>
+                        <div class="data-grid cols-3">
+                            <template x-for="r in lastRisks" :key="r.id">
                             <div class="card">
                                 <div class="font-semibold" x-text="r.threat"></div>
                                 <div class="text-xs text-muted mt-2" x-text="`Исходный: ${r.score} → Остаточный: ${r.residualScore || '—'}`"></div>
                                 <span :class="getRiskCategory(r.score) === 'low' ? 'risk-badge risk-low' : getRiskCategory(r.score) === 'medium' ? 'risk-badge risk-medium' : 'risk-badge risk-high'" style="margin-top: 0.5rem; display: inline-block;" x-text="getRiskCategoryLabel(r.score)"></span>
                             </div>
                         </template>
+                        </div>
                     </div>
                 </div>
-            </div>
-            <!-- Таб 1 — Критерии -->
-            <div x-show="currentTab === 1">
-                <div style="max-width: 48rem; margin: 0 auto;">
-                    <h2 class="section-title">Настройка критериев (ГОСТ Р 27005)</h2>
-                    <div class="card" style="padding: 2rem;">
-                        <div style="margin-bottom: 2rem;">
-                            <label class="form-label">Формула риска</label>
-                            <div style="font-size: 1.75rem; font-weight: 700; color: var(--primary-color); margin-top: 0.5rem;">Риск = Ущерб × Вероятность × Приоритет</div>
-                        </div>
+                <!-- Таб 1 — Критерии -->
+                <div x-show="currentTab === 1">
+                    <div style="max-width: 48rem; margin: 0 auto;">
+                        <h2 class="section-title">Настройка критериев (ГОСТ Р 27005)</h2>
+                        <div class="card" style="padding: 2rem;">
+                            <div style="margin-bottom: 2rem;">
+                                <label class="form-label">Формула риска</label>
+                                <div style="font-size: 1.75rem; font-weight: 700; color: var(--primary-color); margin-top: 0.5rem;">Риск = Ущерб × Вероятность × Приоритет</div>
+                            </div>
 
-                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 2rem;">
-                            <div class="form-group">
-                                <label class="form-label">Уровень ущерба (баллы)</label>
-                                <input type="range" min="1" max="4" x-model.number="criteria.damageMax" class="w-full" style="accent-color: var(--primary-color);" />
-                                <div style="display: flex; justify-content: space-between; font-size: 0.75rem; margin-top: 0.5rem;">
-                                    <span>1</span>
-                                    <span class="font-bold" x-text="criteria.damageMax">4</span>
+                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 2rem;">
+                                <div class="form-group">
+                                    <label class="form-label">Уровень ущерба (баллы)</label>
+                                    <input type="range" min="1" max="4" x-model.number="criteria.damageMax" class="w-full" style="accent-color: var(--primary-color);" />
+                                    <div style="display: flex; justify-content: space-between; font-size: 0.75rem; margin-top: 0.5rem;">
+                                        <span>1</span>
+                                        <span class="font-bold" x-text="criteria.damageMax">4</span>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Вероятность (баллы)</label>
+                                    <input type="range" min="1" max="4" x-model.number="criteria.probMax" class="w-full" style="accent-color: var(--primary-color);" />
+                                    <div style="display: flex; justify-content: space-between; font-size: 0.75rem; margin-top: 0.5rem;">
+                                        <span>1</span>
+                                        <span class="font-bold" x-text="criteria.probMax">4</span>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Приоритет актива (баллы)</label>
+                                    <input type="range" min="1" max="4" x-model.number="criteria.priorityMax" class="w-full" style="accent-color: var(--primary-color);" />
+                                    <div style="display: flex; justify-content: space-between; font-size: 0.75rem; margin-top: 0.5rem;">
+                                        <span>1</span>
+                                        <span class="font-bold" x-text="criteria.priorityMax">4</span>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="form-group">
-                                <label class="form-label">Вероятность (баллы)</label>
-                                <input type="range" min="1" max="4" x-model.number="criteria.probMax" class="w-full" style="accent-color: var(--primary-color);" />
-                                <div style="display: flex; justify-content: space-between; font-size: 0.75rem; margin-top: 0.5rem;">
-                                    <span>1</span>
-                                    <span class="font-bold" x-text="criteria.probMax">4</span>
+
+                            <div class="form-group" style="margin-bottom: 2rem;">
+                                <label class="form-label">Риск-аппетит (макс. допустимый балл риска)</label>
+                                <input type="range" min="4" max="32" x-model.number="criteria.riskAppetite" step="1" class="w-full" style="accent-color: var(--success-color); margin: 1rem 0;" />
+                                <div style="display: flex; justify-content: space-between; font-family: monospace; font-size: 0.875rem;">
+                                    <span>Низкий риск</span>
+                                    <span class="font-bold text-lg" x-text="criteria.riskAppetite" style="color: var(--success-color);">12</span>
+                                    <span>Средний / Высокий</span>
                                 </div>
+                                <div class="text-xs text-muted" style="margin-top: 0.5rem;">Риски ≤ {{ criteria.riskAppetite }} - приемлемые, выше - требуют внимания</div>
                             </div>
-                            <div class="form-group">
-                                <label class="form-label">Приоритет актива (баллы)</label>
-                                <input type="range" min="1" max="4" x-model.number="criteria.priorityMax" class="w-full" style="accent-color: var(--primary-color);" />
-                                <div style="display: flex; justify-content: space-between; font-size: 0.75rem; margin-top: 0.5rem;">
-                                    <span>1</span>
-                                    <span class="font-bold" x-text="criteria.priorityMax">4</span>
-                                </div>
+
+                            <div class="form-group" style="margin-bottom: 2rem;">
+                                <label class="form-label">Стоимость 1 балла риска</label>
+                                <input type="number" x-model.number="criteria.costPerPoint" placeholder="50000" class="form-input" style="font-size: 1.25rem; font-weight: 700; padding: 0.75rem;" />
+                                <div class="text-xs text-muted" style="margin-top: 0.5rem;">рублей (используется для расчёта экономического ущерба)</div>
                             </div>
-                        </div>
 
-                        <div class="form-group" style="margin-bottom: 2rem;">
-                            <label class="form-label">Риск-аппетит (макс. допустимый балл риска)</label>
-                            <input type="range" min="4" max="32" x-model.number="criteria.riskAppetite" step="1" class="w-full" style="accent-color: var(--success-color); margin: 1rem 0;" />
-                            <div style="display: flex; justify-content: space-between; font-family: monospace; font-size: 0.875rem;">
-                                <span>Низкий риск</span>
-                                <span class="font-bold text-lg" x-text="criteria.riskAppetite" style="color: var(--success-color);">12</span>
-                                <span>Средний / Высокий</span>
-                            </div>
-                            <div class="text-xs text-muted" style="margin-top: 0.5rem;">Риски ≤ {{ criteria.riskAppetite }} - приемлемые, выше - требуют внимания</div>
+                            <button @click="saveCriteria()" class="btn btn-primary" style="width: 100%; padding: 1rem; font-weight: 600;">✅ Сохранить критерии</button>
                         </div>
-
-                        <div class="form-group" style="margin-bottom: 2rem;">
-                            <label class="form-label">Стоимость 1 балла риска</label>
-                            <input type="number" x-model.number="criteria.costPerPoint" placeholder="50000" class="form-input" style="font-size: 1.25rem; font-weight: 700; padding: 0.75rem;" />
-                            <div class="text-xs text-muted" style="margin-top: 0.5rem;">рублей (используется для расчёта экономического ущерба)</div>
-                        </div>
-
-                        <button @click="saveCriteria()" class="btn btn-primary" style="width: 100%; padding: 1rem; font-weight: 600;">✅ Сохранить критерии</button>
                     </div>
                 </div>
-            </div>
-            <!-- Таб 2 — Активы -->
-            <div x-show="currentTab === 2">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                    <h2 class="section-title" style="margin: 0;">Реестр активов</h2>
-                    <button @click="openAddAssetModal()" class="btn btn-primary">+ Добавить актив</button>
-                </div>
-                <div class="data-grid cols-2">
-                    <template x-for="a in assets" :key="a.id">
+                <!-- Таб 2 — Активы -->
+                <div x-show="currentTab === 2">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                        <h2 class="section-title" style="margin: 0;">Реестр активов</h2>
+                        <button @click="openAddAssetModal()" class="btn btn-primary">+ Добавить актив</button>
+                    </div>
+                    <div class="data-grid cols-2">
+                        <template x-for="a in assets" :key="a.id">
                         <div class="card">
                             <div class="flex-1">
                                 <div class="font-semibold" x-text="a.name" style="font-size: 1.1rem; margin-bottom: 1rem;"></div>
@@ -155,16 +215,16 @@
                             </div>
                         </div>
                     </template>
+                    </div>
                 </div>
-            </div>
-            <!-- Таб 3 — Риски -->
-            <div x-show="currentTab === 3">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                    <h2 class="section-title" style="margin: 0;">Реестр рисков</h2>
-                    <button @click="openAddRiskModal()" class="btn btn-primary">+ Добавить риск</button>
-                </div>
-                <div style="display: flex; flex-direction: column; gap: 1rem;">
-                    <template x-for="r in risks" :key="r.id">
+                <!-- Таб 3 — Риски -->
+                <div x-show="currentTab === 3">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                        <h2 class="section-title" style="margin: 0;">Реестр рисков</h2>
+                        <button @click="openAddRiskModal()" class="btn btn-primary">+ Добавить риск</button>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <template x-for="r in risks" :key="r.id">
                         <div class="card">
                             <div style="display: flex; justify-content: space-between; align-items: start; gap: 1.5rem;">
                                 <div style="flex: 1;">
@@ -191,21 +251,21 @@
                                     <template x-if="!r.measureId">
                                         <button @click="openLinkMeasureModal(r.id)" class="btn btn-secondary" style="font-size: 0.875rem; padding: 0.5rem 0.75rem;">🔗 Привязать меру</button>
                                     </template>
-                                    <template x-if="r.measureId">
+                        <template x-if="r.measureId">
                                         <button @click="unlinkMeasureFromRisk(r.id)" class="btn btn-secondary" style="font-size: 0.875rem; padding: 0.5rem 0.75rem;">❌ Отвязать меру</button>
                                     </template>
-                                    <button @click="deleteRisk(r.id)" class="btn btn-danger" style="font-size: 0.875rem; padding: 0.5rem 0.75rem;">🗑️ Удалить</button>
-                                </div>
-                            </div>
-                        </div>
-                    </template>
+                        <button @click="deleteRisk(r.id)" class="btn btn-danger" style="font-size: 0.875rem; padding: 0.5rem 0.75rem;">🗑️ Удалить</button>
+                    </div>
                 </div>
             </div>
-            <!-- Таб 4 — Защитные меры -->
-            <div x-show="currentTab === 4">
-                <h2 class="section-title">Защитные меры и их влияние</h2>
-                <div class="data-grid cols-2">
-                    <template x-for="m in measures" :key="m.id">
+            </template>
+        </div>
+    </div>
+    <!-- Таб 4 — Защитные меры -->
+    <div x-show="currentTab === 4">
+        <h2 class="section-title">Защитные меры и их влияние</h2>
+        <div class="data-grid cols-2">
+            <template x-for="m in measures" :key="m.id">
                         <div class="card">
                             <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
                                 <div class="font-semibold" x-text="m.name"></div>
@@ -218,50 +278,50 @@
                                     <div>ROSI: <span style="color: var(--primary-color); font-weight: bold;" x-text="`${getEffectForMeasure(m).rosi}%`"></span></div>
                                 </div>
                             </template>
-                            <template x-if="!getEffectForMeasure(m)">
+            <template x-if="!getEffectForMeasure(m)">
                                 <button @click="openLinkMeasureRiskModal(m.id)" class="btn btn-secondary" style="margin-bottom: 0.5rem; font-size: 0.875rem; width: 100%;">🔗 Привязать к риску</button>
                             </template>
-                            <button @click="deleteMeasure(m.id)" class="btn btn-danger" style="font-size: 0.875rem; width: 100%;">🗑️ Удалить</button>
-                        </div>
-                    </template>
-                </div>
-                <button @click="openAddMeasureModal()" class="btn btn-primary" style="display: block; margin: 2rem auto;">+ Создать новую защитную меру</button>
-            </div>
-            <!-- Таб 5 — Экономика -->
-            <div x-show="currentTab === 5">
-                <h2 class="section-title">Экономическая эффективность внедрения ИБ</h2>
-                <div class="card" style="padding: 2rem; margin-bottom: 2rem;">
-                    <div style="text-align: center;">
-                        <div style="display: flex; flex-direction: column; gap: 1.5rem; align-items: center;">
-                            <div>
-                                <div class="stat-label">Ожидаемые потери ДО внедрения защитных мер</div>
-                                <div class="stat-value text-danger" style="color: var(--danger-color); margin-top: 0.5rem;" x-text="`${economicSummaryBefore.toLocaleString('ru')} ₽`">0 ₽</div>
-                                <div class="text-xs text-muted" style="margin-top: 0.5rem;">Сумма всех возможных потерь от рисков</div>
-                            </div>
-                            <div style="font-size: 2rem;">↓</div>
-                            <div>
-                                <div class="stat-label">Ожидаемые потери ПОСЛЕ внедрения защитных мер</div>
-                                <div class="stat-value text-success" style="color: var(--success-color); margin-top: 0.5rem;" x-text="`${economicSummaryAfter.toLocaleString('ru')} ₽`">0 ₽</div>
-                                <div class="text-xs text-muted" style="margin-top: 0.5rem;">Остаточные потери при условии внедрения всех мер</div>
-                            </div>
-                            <div style="font-size: 2rem;">−</div>
-                            <div>
-                                <div class="stat-label">Инвестиции в защитные меры</div>
-                                <div class="stat-value" style="margin-top: 0.5rem; font-size: 1.5rem;" x-text="`${economicTotalCost.toLocaleString('ru')} ₽`">0 ₽</div>
-                                <div class="text-xs text-muted" style="margin-top: 0.5rem;">Общая стоимость всех защитных мер</div>
-                            </div>
-                            <div style="padding: 2rem; border-top: 2px solid var(--border-color); width: 100%; margin-top: 1rem;">
-                                <div class="stat-label">ЧИСТЫЙ ЭКОНОМИЧЕСКИЙ ЭФФЕКТ за год</div>
-                                <div class="stat-value" :class="economicTotalEffect > 0 ? 'text-success' : 'text-danger'" style="margin-top: 0.5rem; font-size: 2rem;" :style="`color: ${economicTotalEffect > 0 ? 'var(--success-color)' : 'var(--danger-color)'};`" x-text="`${economicTotalEffect.toLocaleString('ru')} ₽`">0 ₽</div>
-                                <div class="text-xs text-muted" style="margin-top: 0.5rem;">Формула: (Потери до - Потери после) - Инвестиции</div>
-                            </div>
-                        </div>
+            <button @click="deleteMeasure(m.id)" class="btn btn-danger" style="font-size: 0.875rem; width: 100%;">🗑️ Удалить</button>
+        </div>
+        </template>
+    </div>
+    <button @click="openAddMeasureModal()" class="btn btn-primary" style="display: block; margin: 2rem auto;">+ Создать новую защитную меру</button>
+    </div>
+    <!-- Таб 5 — Экономика -->
+    <div x-show="currentTab === 5">
+        <h2 class="section-title">Экономическая эффективность внедрения ИБ</h2>
+        <div class="card" style="padding: 2rem; margin-bottom: 2rem;">
+            <div style="text-align: center;">
+                <div style="display: flex; flex-direction: column; gap: 1.5rem; align-items: center;">
+                    <div>
+                        <div class="stat-label">Ожидаемые потери ДО внедрения защитных мер</div>
+                        <div class="stat-value text-danger" style="color: var(--danger-color); margin-top: 0.5rem;" x-text="`${economicSummaryBefore.toLocaleString('ru')} ₽`">0 ₽</div>
+                        <div class="text-xs text-muted" style="margin-top: 0.5rem;">Сумма всех возможных потерь от рисков</div>
+                    </div>
+                    <div style="font-size: 2rem;">↓</div>
+                    <div>
+                        <div class="stat-label">Ожидаемые потери ПОСЛЕ внедрения защитных мер</div>
+                        <div class="stat-value text-success" style="color: var(--success-color); margin-top: 0.5rem;" x-text="`${economicSummaryAfter.toLocaleString('ru')} ₽`">0 ₽</div>
+                        <div class="text-xs text-muted" style="margin-top: 0.5rem;">Остаточные потери при условии внедрения всех мер</div>
+                    </div>
+                    <div style="font-size: 2rem;">−</div>
+                    <div>
+                        <div class="stat-label">Инвестиции в защитные меры</div>
+                        <div class="stat-value" style="margin-top: 0.5rem; font-size: 1.5rem;" x-text="`${economicTotalCost.toLocaleString('ru')} ₽`">0 ₽</div>
+                        <div class="text-xs text-muted" style="margin-top: 0.5rem;">Общая стоимость всех защитных мер</div>
+                    </div>
+                    <div style="padding: 2rem; border-top: 2px solid var(--border-color); width: 100%; margin-top: 1rem;">
+                        <div class="stat-label">ЧИСТЫЙ ЭКОНОМИЧЕСКИЙ ЭФФЕКТ за год</div>
+                        <div class="stat-value" :class="economicTotalEffect > 0 ? 'text-success' : 'text-danger'" style="margin-top: 0.5rem; font-size: 2rem;" :style="`color: ${economicTotalEffect > 0 ? 'var(--success-color)' : 'var(--danger-color)'};`" x-text="`${economicTotalEffect.toLocaleString('ru')} ₽`">0 ₽</div>
+                        <div class="text-xs text-muted" style="margin-top: 0.5rem;">Формула: (Потери до - Потери после) - Инвестиции</div>
                     </div>
                 </div>
-                <div v-if="measures.length > 0" class="card">
-                    <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1.5rem;">Анализ по защитным мерам</h3>
-                    <div class="data-grid cols-2">
-                        <template x-for="m in measures" :key="m.id">
+            </div>
+        </div>
+        <div v-if="measures.length > 0" class="card">
+            <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1.5rem;">Анализ по защитным мерам</h3>
+            <div class="data-grid cols-2">
+                <template x-for="m in measures" :key="m.id">
                             <template x-if="getEffectForMeasure(m)">
                                 <div class="card" style="background-color: rgba(34, 197, 94, 0.05); border-left: 4px solid var(--success-color);">
                                     <div class="font-semibold" x-text="m.name" style="margin-bottom: 1rem;"></div>
@@ -277,180 +337,172 @@
                                     <div class="text-xs text-muted">Net ROSI = ((потери до - потери после) - стоимость) / стоимость * 100%</div>
                                 </div>
                             </template>
-                        </template>
-                    </div>
-                </div>
+                </template>
             </div>
+        </div>
+    </div>
 
-            <!-- МОДАЛЬНОЕ ОКНО ДЛЯ ПРИВЯЗКИ МЕРЫ -->
-            <div x-show="linkMeasureModalOpen" class="modal-overlay" @click.self="closeLinkMeasureModal()">
-                <div class="modal">
-                    <h3 class="modal-header">Привязать защитную меру к риску</h3>
-                    <div class="modal-body">
-                        <select id="riskSelect" class="form-select">
+    <!-- МОДАЛЬНОЕ ОКНО ДЛЯ ПРИВЯЗКИ МЕРЫ -->
+    <div x-show="linkMeasureModalOpen" class="modal-overlay" @click.self="closeLinkMeasureModal()">
+        <div class="modal">
+            <h3 class="modal-header">Привязать защитную меру к риску</h3>
+            <div class="modal-body">
+                <select id="riskSelect" class="form-select">
                             <option value="">Выберите риск...</option>
                             <template x-for="risk in getAvailableRisksForLinking()" :key="risk.id">
                                 <option :value="risk.id" x-text="risk.label"></option>
                             </template>
                         </select>
-                    </div>
-                    <div class="modal-footer">
-                        <button @click="closeLinkMeasureModal()" class="btn btn-secondary">Отмена</button>
-                        <button @click="confirmLinkMeasure()" class="btn btn-primary">Привязать</button>
-                    </div>
-                </div>
             </div>
+            <div class="modal-footer">
+                <button @click="closeLinkMeasureModal()" class="btn btn-secondary">Отмена</button>
+                <button @click="confirmLinkMeasure()" class="btn btn-primary">Привязать</button>
+            </div>
+        </div>
+    </div>
 
-            <!-- МОДАЛЬНОЕ ОКНО ДЛЯ ПРИВЯЗКИ МЕРЫ С ДРУГОЙ СТОРОНЫ (ИЗ ТАБА РИСКИ) -->
-            <div x-show="linkMeasureRiskModalOpen" class="modal-overlay" @click.self="closeLinkMeasureRiskModal()">
-                <div class="modal">
-                    <h3 class="modal-header">Привязать риск к защитной мере</h3>
-                    <div class="modal-body">
-                        <select id="riskSelectForMeasure" class="form-select">
+    <!-- МОДАЛЬНОЕ ОКНО ДЛЯ ПРИВЯЗКИ МЕРЫ С ДРУГОЙ СТОРОНЫ (ИЗ ТАБА РИСКИ) -->
+    <div x-show="linkMeasureRiskModalOpen" class="modal-overlay" @click.self="closeLinkMeasureRiskModal()">
+        <div class="modal">
+            <h3 class="modal-header">Привязать риск к защитной мере</h3>
+            <div class="modal-body">
+                <select id="riskSelectForMeasure" class="form-select">
                             <option value="">Выберите риск...</option>
                             <template x-for="risk in getAvailableRisksForMeasureLinking()" :key="risk.id">
                                 <option :value="risk.id" x-text="risk.label"></option>
                             </template>
                         </select>
-                    </div>
-                    <div class="modal-footer">
-                        <button @click="closeLinkMeasureRiskModal()" class="btn btn-secondary">Отмена</button>
-                        <button @click="confirmLinkMeasureRisk()" class="btn btn-primary">Привязать</button>
-                    </div>
-                </div>
             </div>
+            <div class="modal-footer">
+                <button @click="closeLinkMeasureRiskModal()" class="btn btn-secondary">Отмена</button>
+                <button @click="confirmLinkMeasureRisk()" class="btn btn-primary">Привязать</button>
+            </div>
+        </div>
+    </div>
 
-            <!-- МОДАЛЬНОЕ ОКНО ДОБАВЛЕНИЯ АКТИВА -->
-            <div x-show="addAssetModalOpen" class="modal-overlay" @click.self="closeAddAssetModal()">
-                <div class="modal">
-                    <h3 class="modal-header">Добавить актив</h3>
-                    <div class="modal-body">
-                        <div class="form-group">
-                            <label class="form-label">Название актива</label>
-                            <input type="text" x-model="assetForm.name" placeholder="Например: Сервер базы данных" class="form-input" />
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Стоимость (₽)</label>
-                            <input type="number" x-model.number="assetForm.value" placeholder="1000000" class="form-input" />
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Приоритет (1-4)</label>
-                            <select x-model.number="assetForm.priority" class="form-select">
+    <!-- МОДАЛЬНОЕ ОКНО ДОБАВЛЕНИЯ АКТИВА -->
+    <div x-show="addAssetModalOpen" class="modal-overlay" @click.self="closeAddAssetModal()">
+        <div class="modal">
+            <h3 class="modal-header">Добавить актив</h3>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Название актива</label>
+                    <input type="text" x-model="assetForm.name" placeholder="Например: Сервер базы данных" class="form-input" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Стоимость (₽)</label>
+                    <input type="number" x-model.number="assetForm.value" placeholder="1000000" class="form-input" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Приоритет (1-4)</label>
+                    <select x-model.number="assetForm.priority" class="form-select">
                                 <option value="1">1 - Минимальный</option>
                                 <option value="2">2 - Низкий</option>
                                 <option value="3">3 - Средний</option>
                                 <option value="4">4 - Высокий</option>
                             </select>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button @click="closeAddAssetModal()" class="btn btn-secondary">Отмена</button>
-                        <button @click="submitAsset()" class="btn btn-primary">Добавить</button>
-                    </div>
                 </div>
             </div>
+            <div class="modal-footer">
+                <button @click="closeAddAssetModal()" class="btn btn-secondary">Отмена</button>
+                <button @click="submitAsset()" class="btn btn-primary">Добавить</button>
+            </div>
+        </div>
+    </div>
 
-            <!-- МОДАЛЬНОЕ ОКНО ДОБАВЛЕНИЯ РИСКА -->
-            <div x-show="addRiskModalOpen" class="modal-overlay" @click.self="closeAddRiskModal()">
-                <div class="modal">
-                    <h3 class="modal-header">Добавить риск</h3>
-                    <div class="modal-body">
-                        <div class="form-group">
-                            <label class="form-label">Угроза</label>
-                            <input type="text" x-model="riskForm.threat" placeholder="Например: Компрометация учетных данных" class="form-input" />
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Уязвимость</label>
-                            <input type="text" x-model="riskForm.vulnerability" placeholder="Например: Слабый пароль" class="form-input" />
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Выберите актив</label>
-                            <select x-model.number="riskForm.assetId" class="form-select">
+    <!-- МОДАЛЬНОЕ ОКНО ДОБАВЛЕНИЯ РИСКА -->
+    <div x-show="addRiskModalOpen" class="modal-overlay" @click.self="closeAddRiskModal()">
+        <div class="modal">
+            <h3 class="modal-header">Добавить риск</h3>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Угроза</label>
+                    <input type="text" x-model="riskForm.threat" placeholder="Например: Компрометация учетных данных" class="form-input" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Уязвимость</label>
+                    <input type="text" x-model="riskForm.vulnerability" placeholder="Например: Слабый пароль" class="form-input" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Выберите актив</label>
+                    <select x-model.number="riskForm.assetId" class="form-select">
                                 <option value="">Выберите актив...</option>
                                 <template x-for="asset in assets" :key="asset.id">
                                     <option :value="asset.id" x-text="asset.name"></option>
                                 </template>
                             </select>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Ущерб (1 - минимальный, 4 - критический)</label>
-                            <div style="display: flex; align-items: center; gap: 1rem;">
-                                <input type="range" x-model.number="riskForm.damage" min="1" max="4" class="flex-1" />
-                                <span class="text-sm font-semibold" style="width: 2rem; text-align: center;" x-text="riskForm.damage">1</span>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Вероятность (1 - минимальная, 4 - высокая)</label>
-                            <div style="display: flex; align-items: center; gap: 1rem;">
-                                <input type="range" x-model.number="riskForm.probability" min="1" max="4" class="flex-1" />
-                                <span class="text-sm font-semibold" style="width: 2rem; text-align: center;" x-text="riskForm.probability">1</span>
-                            </div>
-                        </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Ущерб (1 - минимальный, 4 - критический)</label>
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <input type="range" x-model.number="riskForm.damage" min="1" max="4" class="flex-1" />
+                        <span class="text-sm font-semibold" style="width: 2rem; text-align: center;" x-text="riskForm.damage">1</span>
                     </div>
-                    <div class="modal-footer">
-                        <button @click="closeAddRiskModal()" class="btn btn-secondary">Отмена</button>
-                        <button @click="submitRisk()" class="btn btn-primary">Добавить</button>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Вероятность (1 - минимальная, 4 - высокая)</label>
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <input type="range" x-model.number="riskForm.probability" min="1" max="4" class="flex-1" />
+                        <span class="text-sm font-semibold" style="width: 2rem; text-align: center;" x-text="riskForm.probability">1</span>
                     </div>
                 </div>
             </div>
-
-            <!-- МОДАЛЬНОЕ ОКНО ДОБАВЛЕНИЯ ЗАЩИТНОЙ МЕРЫ -->
-            <div x-show="addMeasureModalOpen" class="modal-overlay" @click.self="closeAddMeasureModal()">
-                <div class="modal">
-                    <h3 class="modal-header">Добавить защитную меру</h3>
-                    <div class="modal-body">
-                        <div class="form-group">
-                            <label class="form-label">Название меры</label>
-                            <input type="text" x-model="measureForm.name" placeholder="Например: Двухфакторная аутентификация" class="form-input" />
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Стоимость (₽)</label>
-                            <input type="number" x-model.number="measureForm.cost" placeholder="50000" class="form-input" />
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Снижение ущерба (%)</label>
-                            <div style="display: flex; align-items: center; gap: 1rem;">
-                                <input type="range" x-model.number="measureForm.reduceDamage" min="0" max="100" step="5" class="flex-1" />
-                                <span class="text-sm font-semibold" style="width: 3rem; text-align: center;" x-text="`${measureForm.reduceDamage}%`">0%</span>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Снижение вероятности (%)</label>
-                            <div style="display: flex; align-items: center; gap: 1rem;">
-                                <input type="range" x-model.number="measureForm.reduceProb" min="0" max="100" step="5" class="flex-1" />
-                                <span class="text-sm font-semibold" style="width: 3rem; text-align: center;" x-text="`${measureForm.reduceProb}%`">0%</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button @click="closeAddMeasureModal()" class="btn btn-secondary">Отмена</button>
-                        <button @click="submitMeasure()" class="btn btn-primary">Добавить</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- МОДАЛЬНОЕ ОКНО УВЕДОМЛЕНИЙ -->
-            <div x-show="notification.show" class="fixed top-8 right-8 z-50">
-                <div 
-                    :class="{
-                        'notification-success': notification.type === 'success',
-                        'notification-error': notification.type === 'error',
-                        'notification-info': notification.type === 'info'
-                    }"
-                    class="notification"
-                    x-text="notification.message"
-                    x-transition:enter="transition ease-out duration-300"
-                    x-transition:enter-start="opacity-0 transform scale-90 -translate-y-4"
-                    x-transition:enter-end="opacity-100 transform scale-100 translate-y-0"
-                    x-transition:leave="transition ease-in duration-200"
-                    x-transition:leave-start="opacity-100 transform scale-100 translate-y-0"
-                    x-transition:leave-end="opacity-0 transform scale-90 -translate-y-4"
-                >
-                </div>
+            <div class="modal-footer">
+                <button @click="closeAddRiskModal()" class="btn btn-secondary">Отмена</button>
+                <button @click="submitRisk()" class="btn btn-primary">Добавить</button>
             </div>
         </div>
     </div>
 
+    <!-- МОДАЛЬНОЕ ОКНО ДОБАВЛЕНИЯ ЗАЩИТНОЙ МЕРЫ -->
+    <div x-show="addMeasureModalOpen" class="modal-overlay" @click.self="closeAddMeasureModal()">
+        <div class="modal">
+            <h3 class="modal-header">Добавить защитную меру</h3>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Название меры</label>
+                    <input type="text" x-model="measureForm.name" placeholder="Например: Двухфакторная аутентификация" class="form-input" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Стоимость (₽)</label>
+                    <input type="number" x-model.number="measureForm.cost" placeholder="50000" class="form-input" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Снижение ущерба (%)</label>
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <input type="range" x-model.number="measureForm.reduceDamage" min="0" max="100" step="5" class="flex-1" />
+                        <span class="text-sm font-semibold" style="width: 3rem; text-align: center;" x-text="`${measureForm.reduceDamage}%`">0%</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Снижение вероятности (%)</label>
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <input type="range" x-model.number="measureForm.reduceProb" min="0" max="100" step="5" class="flex-1" />
+                        <span class="text-sm font-semibold" style="width: 3rem; text-align: center;" x-text="`${measureForm.reduceProb}%`">0%</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button @click="closeAddMeasureModal()" class="btn btn-secondary">Отмена</button>
+                <button @click="submitMeasure()" class="btn btn-primary">Добавить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- МОДАЛЬНОЕ ОКНО УВЕДОМЛЕНИЙ -->
+    <div x-show="notification.show" class="fixed top-8 right-8 z-50">
+        <div :class="{
+                        'notification-success': notification.type === 'success',
+                        'notification-error': notification.type === 'error',
+                        'notification-info': notification.type === 'info'
+                    }" class="notification" x-text="notification.message" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform scale-90 -translate-y-4" x-transition:enter-end="opacity-100 transform scale-100 translate-y-0"
+            x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 transform scale-100 translate-y-0" x-transition:leave-end="opacity-0 transform scale-90 -translate-y-4">
+        </div>
+    </div>
+    </div>
+    </div>
+
     <script src="script.js"></script>
 </body>
+
 </html>
