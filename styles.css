@@ -2,10 +2,15 @@
 :root {
   --app-background: #0f172a;
   --header-background: #1e2937;
+  --sidebar-background: #162031;
   --card-background: #1e2937;
   --primary-color: #3b82f6;
   --success-color: #22c55e;
+  --warning-color: #f59e0b;
   --danger-color: #ef4444;
+  --risk-low: #22c55e;
+  --risk-medium: #f59e0b;
+  --risk-high: #ef4444;
   --text-primary: #f1f5f9;
   --text-secondary: #cbd5e1;
   --text-muted: #64748b;
@@ -27,6 +32,96 @@ body {
     background-color: var(--app-background);
     color: var(--text-primary);
     font-family: var(--font-family);
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+html, body, #app {
+    height: 100%;
+}
+
+.layout-wrapper {
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.sidebar {
+    width: 280px;
+    background-color: var(--sidebar-background);
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    flex-shrink: 0;
+}
+
+.sidebar-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.sidebar-header h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    color: var(--primary-color);
+    font-weight: 700;
+}
+
+.sidebar-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem 0;
+}
+
+.sidebar-button {
+    width: 100%;
+    padding: 0.875rem 1.5rem;
+    text-align: left;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: all 0.2s;
+    border-left: 4px solid transparent;
+}
+
+.sidebar-button:hover {
+    background-color: rgba(59, 130, 246, 0.1);
+    color: var(--text-primary);
+}
+
+.sidebar-button.active {
+    background-color: rgba(59, 130, 246, 0.15);
+    color: var(--primary-color);
+    border-left-color: var(--primary-color);
+}
+
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.header {
+    background-color: var(--header-background);
+    border-bottom: 1px solid var(--border-color);
+    padding: 1.25rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.content-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 2rem;
 }
 
 nav {
@@ -122,27 +217,283 @@ input, select {
     color: var(--text-primary) !important;
 }
 
-/* Модальное окно в темной теме */
-#linkMeasureModal .bg-white {
-    background-color: var(--card-background) !important;
-    color: var(--text-primary) !important;
+/* Модальные окна */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    padding: 1rem;
 }
 
-#linkMeasureModal select {
+.modal {
+    background-color: var(--card-background);
+    border-radius: var(--border-radius);
+    padding: 2rem;
+    max-width: 32rem;
+    width: 100%;
+    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.5);
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    color: var(--text-primary);
+}
+
+.modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.modal-footer {
+    margin-top: 1.5rem;
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+}
+
+/* Цветовая индикация рисков */
+.risk-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.risk-low {
+    background-color: rgba(34, 197, 94, 0.2);
+    color: var(--risk-low);
+}
+
+.risk-medium {
+    background-color: rgba(245, 158, 11, 0.2);
+    color: var(--risk-medium);
+}
+
+.risk-high {
+    background-color: rgba(239, 68, 68, 0.2);
+    color: var(--risk-high);
+}
+
+.risk-indicator {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 0.5rem;
+}
+
+.risk-indicator.low {
+    background-color: var(--risk-low);
+}
+
+.risk-indicator.medium {
+    background-color: var(--risk-medium);
+}
+
+.risk-indicator.high {
+    background-color: var(--risk-high);
+}
+
+/* Стилизация input и select */
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.form-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.form-input,
+.form-select {
     background-color: var(--input-background) !important;
     border: 1px solid var(--input-border) !important;
+    border-radius: var(--border-radius) !important;
     color: var(--text-primary) !important;
+    padding: 0.625rem 0.75rem;
+    font-family: var(--font-family);
+    transition: border-color 0.2s;
 }
 
-/* ====================== КЛАССЫ ДЛЯ УВЕДОМЛЕНИЙ ====================== */
-.bg-success {
-    background-color: var(--success-color) !important;
+.form-input:focus,
+.form-select:focus {
+    outline: none;
+    border-color: var(--primary-color) !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
-.bg-danger {
-    background-color: var(--danger-color) !important;
+/* Уведомления */
+.notification {
+    position: fixed;
+    top: 2rem;
+    right: 2rem;
+    z-index: 100;
+    border-radius: var(--border-radius);
+    padding: 1rem 1.5rem;
+    font-weight: 500;
+    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.5);
+    animation: slideIn 0.3s ease-out;
 }
 
-.bg-info {
-    background-color: var(--primary-color) !important;
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.notification-success {
+    background-color: var(--success-color);
+    color: white;
+}
+
+.notification-error {
+    background-color: var(--danger-color);
+    color: white;
+}
+
+.notification-info {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+/* Таблицы и списки */
+.data-grid {
+    display: grid;
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.data-grid.cols-2 {
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+
+.data-grid.cols-3 {
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+}
+
+/* Значки и индикаторы */
+.section-title {
+    font-size: 1.875rem;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+    color: var(--text-primary);
+}
+
+.stat-card {
+    background-color: var(--card-background);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    text-align: center;
+    border-left: 4px solid var(--primary-color);
+}
+
+.stat-card.success {
+    border-left-color: var(--success-color);
+}
+
+.stat-card.warning {
+    border-left-color: var(--warning-color);
+}
+
+.stat-card.danger {
+    border-left-color: var(--danger-color);
+}
+
+.stat-label {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+/* Градиентный фон для основного контента */
+.gradient-header {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(34, 197, 94, 0.05) 100%);
+    padding: 2rem;
+    border-radius: var(--border-radius);
+    margin-bottom: 2rem;
+}
+
+/* Отзывчивые элементы */
+@media (max-width: 1024px) {
+    .sidebar {
+        width: 240px;
+    }
+    
+    .data-grid.cols-2 {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .layout-wrapper {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        width: 100%;
+        max-height: 60px;
+        flex-direction: row;
+        align-items: center;
+        padding: 0 1rem;
+    }
+    
+    .sidebar-header {
+        padding: 0;
+        border-bottom: none;
+        margin-right: 2rem;
+    }
+    
+    .sidebar-content {
+        padding: 0;
+        display: flex;
+        gap: 1rem;
+        overflow-x: auto;
+    }
+    
+    .sidebar-button {
+        padding: 0.5rem 1rem;
+        white-space: nowrap;
+        border-left: none;
+        border-bottom: 3px solid transparent;
+    }
+    
+    .sidebar-button.active {
+        border-left: none;
+        border-bottom-color: var(--primary-color);
+    }
+    
+    .header {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .content-area {
+        padding: 1rem;
+    }
 }

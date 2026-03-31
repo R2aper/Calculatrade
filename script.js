@@ -15,6 +15,8 @@ document.addEventListener('alpine:init', () => {
         measures: [],
         currentMeasureIdForLinking: null,
         linkMeasureModalOpen: false,
+        linkMeasureRiskModalOpen: false,
+        currentRiskIdForMeasureLinking: null,
 
         // ====================== МОДАЛЬНЫЕ ОКНА ДОБАВЛЕНИЯ ======================
         addAssetModalOpen: false,
@@ -296,6 +298,16 @@ document.addEventListener('alpine:init', () => {
             this.currentMeasureIdForLinking = null;
         },
 
+        openLinkMeasureRiskModal(measureId) {
+            this.currentMeasureIdForLinking = measureId;
+            this.linkMeasureRiskModalOpen = true;
+        },
+
+        closeLinkMeasureRiskModal() {
+            this.linkMeasureRiskModalOpen = false;
+            this.currentMeasureIdForLinking = null;
+        },
+
         confirmLinkMeasure() {
             const select = document.getElementById('riskSelect');
             const riskId = select.value;
@@ -326,8 +338,68 @@ document.addEventListener('alpine:init', () => {
             this.showNotification(`✅ Мера привязана к риску "${risk.threat}"`, 'success');
         },
 
+        confirmLinkMeasureRisk() {
+            const select = document.getElementById('riskSelectForMeasure');
+            const riskId = select.value;
+            
+            if (!riskId) {
+                this.showNotification('❌ Выберите риск!', 'error');
+                return;
+            }
+            
+            const risk = this.risks.find(r => r.id == riskId);
+            if (!risk) {
+                this.showNotification('❌ Риск не найден', 'error');
+                return;
+            }
+            
+            const measure = this.measures.find(m => m.id === this.currentMeasureIdForLinking);
+            if (!measure) {
+                this.showNotification('❌ Мера не найдена', 'error');
+                return;
+            }
+            
+            // Проверяем, есть ли уже привязанная мера
+            if (risk.measureId) {
+                this.showNotification('⚠️ К этому риску уже привязана мера', 'error');
+                return;
+            }
+            
+            risk.measureId = this.currentMeasureIdForLinking;
+            risk.reduceDamage = measure.reduceDamage;
+            risk.reduceProb = measure.reduceProb;
+            risk.residualScore = this.calculateResidualRisk(risk, measure.reduceDamage, measure.reduceProb);
+            
+            this.closeLinkMeasureRiskModal();
+            this.showNotification(`✅ Риск "${risk.threat}" связан с мерой "${measure.name}"`, 'success');
+        },
+
+        unlinkMeasureFromRisk(riskId) {
+            const risk = this.risks.find(r => r.id === riskId);
+            if (!risk) return;
+            
+            const measureName = this.measures.find(m => m.id === risk.measureId)?.name || 'мера';
+            
+            risk.measureId = null;
+            risk.reduceDamage = 0;
+            risk.reduceProb = 0;
+            risk.residualScore = null;
+            
+            this.showNotification(`✅ Мера отвязана от риска "${risk.threat}"`, 'success');
+        },
+
         // ====================== МЕТОДЫ ОТЧЕТОВ ======================
         getAvailableRisksForLinking() {
+            return this.risks.filter(r => !r.measureId).map(r => {
+                const asset = this.assets.find(a => a.id === r.assetId);
+                return {
+                    id: r.id,
+                    label: `${r.threat} (${asset ? asset.name : 'Актив ID:' + r.assetId}) - Риск: ${r.score}`
+                };
+            });
+        },
+
+        getAvailableRisksForMeasureLinking() {
             return this.risks.filter(r => !r.measureId).map(r => {
                 const asset = this.assets.find(a => a.id === r.assetId);
                 return {
@@ -341,12 +413,25 @@ document.addEventListener('alpine:init', () => {
             return this.risks.filter(r => r.assetId === assetId).length;
         },
 
+        getRiskCategory(riskScore) {
+            if (riskScore <= this.criteria.riskAppetite) return 'low';
+            if (riskScore <= this.criteria.riskAppetite * 1.5) return 'medium';
+            return 'high';
+        },
+
+        getRiskCategoryLabel(riskScore) {
+            const category = this.getRiskCategory(riskScore);
+            if (category === 'low') return '✅ Низкий';
+            if (category === 'medium') return '⚠️ Средний';
+            return '🔴 Высокий';
+        },
+
         getEffectForMeasure(measure) {
             const linkedRisk = this.risks.find(r => r.measureId === measure.id);
             if (!linkedRisk) return null;
             
             const effect = this.calculateExpectedLoss(linkedRisk.score) - this.calculateExpectedLoss(linkedRisk.residualScore);
-            const rosi = this.calculateROSI(effect - measure.cost, measure.cost);
+            const rosi = this.calculateNetROSI(effect, measure.cost);
             
             return { effect, rosi };
         },
@@ -368,6 +453,11 @@ document.addEventListener('alpine:init', () => {
 
         calculateROSI(effect, cost) {
             return cost > 0 ? Math.round((effect / cost) * 100) : 0;
+        },
+
+        calculateNetROSI(effect, cost) {
+            // Net ROSI = ((lossBefore - lossAfter) - cost) / cost * 100%
+            return cost > 0 ? Math.round(((effect - cost) / cost) * 100) : 0;
         },
 
         calculatePayback(cost, annualSaving) {
@@ -396,7 +486,7 @@ document.addEventListener('alpine:init', () => {
             const rosis = this.risks.filter(r => r.residualScore !== null).map(r => {
                 const effect = this.calculateExpectedLoss(r.score) - this.calculateExpectedLoss(r.residualScore);
                 const cost = this.measures.find(m => m.id === r.measureId)?.cost || 100000;
-                return this.calculateROSI(effect - cost, cost);
+                return this.calculateNetROSI(effect, cost);
             });
             return rosis.length ? Math.round(rosis.reduce((a,b)=>a+b,0)/rosis.length) : 0;
         },
