@@ -1,13 +1,14 @@
 <!DOCTYPE html>
 <html lang="ru">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Калькулятор экономической эффективности ИБ</title>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="styles.css">
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- SQL.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
 </head>
 
 <body class="font-sans">
@@ -37,7 +38,7 @@
                 <!-- Кнопка авторизации -->
                 <div style="display: flex; align-items: center; gap: 1rem;">
                     <button @click="toggleAuthModal()" class="btn btn-secondary" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem;">
-                    <span x-text="isLoggedIn ? currentUser.name : '👤 Войти'"></span>
+                    👤 Вход/авторизация
                 </button>
 
                     <button @click="resetAll()" class="btn btn-danger">🔄 Сбросить всё</button>
@@ -55,11 +56,11 @@
                         </div>
 
                         <!-- Переключение вкладок -->
-                        <div style="display: flex; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-color);">
-                            <button @click="switchAuthTab('login')" :class="authTab === 'login' ? 'tab-active' : ''" style="flex: 1; padding: 0.75rem; background: none; border: none; font-weight: 500;">
+                        <div class="auth-tabs">
+                            <button @click="switchAuthTab('login')" :class="authTab === 'login' ? 'tab-active' : ''">
                     Вход
                 </button>
-                            <button @click="switchAuthTab('register')" :class="authTab === 'register' ? 'tab-active' : ''" style="flex: 1; padding: 0.75rem; background: none; border: none; font-weight: 500;">
+                            <button @click="switchAuthTab('register')" :class="authTab === 'register' ? 'tab-active' : ''">
                     Регистрация
                 </button>
                         </div>
@@ -88,7 +89,7 @@
 
                         <!-- Кнопка выхода (показывается только если уже авторизован) -->
                         <div x-show="isLoggedIn" style="margin-top: 1rem; text-align: center;">
-                            <button @click="logout()" class="text-danger text-sm">Выйти из аккаунта</button>
+                            <button @click="logout()" class="btn btn-outline-danger">Выйти из аккаунта</button>
                         </div>
                     </div>
                 </div>
@@ -502,6 +503,7 @@
     </div>
     </div>
 
+    <script src="database.js"></script>
     <script src="script.js"></script>
 </body>
 
