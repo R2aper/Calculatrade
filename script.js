@@ -42,6 +42,51 @@ document.addEventListener('alpine:init', () => {
             return;
           }
 
+          // Создаем demo аккаунт, если его нет
+          const demoResult = db.registerUser('demo', 'demo');
+          if (demoResult.success) {
+            // Создаем данные для demo аккаунта
+            const loginResult = db.loginUser('demo', 'demo');
+            if (loginResult.success) {
+              // Добавляем активы
+              const asset1 =
+                  db.addAsset({name: 'База ПДн', value: 2500000, priority: 4});
+              const asset2 =
+                  db.addAsset({name: 'Сервер 1С', value: 1200000, priority: 3});
+
+              // Добавляем меры
+              const measure1 = db.addMeasure({
+                name: 'Многофакторная аутентификация',
+                cost: 380000,
+                reduceDamage: 30,
+                reduceProb: 90
+              });
+
+              // Добавляем риски
+              const risk1 = db.addRisk({
+                threat: 'Несанкционированный доступ',
+                vulnerability: 'Слабый пароль',
+                assetId: asset1.id,
+                damage: 4,
+                probability: 3,
+                priority: 4,
+                score: 48
+              });
+
+              // Привязываем меру к риску
+              db.updateRisk(risk1.id, {
+                measure_id: measure1.id,
+                reduceDamage: 30,
+                reduceProb: 90,
+                residualScore: 8
+              });
+              db.updateMeasure(measure1.id, {linkedRiskId: risk1.id});
+
+              // Выходим из demo аккаунта
+              db.logout();
+            }
+          }
+
           // Проверяем, есть ли активная сессия в localStorage
           const savedSession = localStorage.getItem('securityAppSession');
           if (savedSession) {
