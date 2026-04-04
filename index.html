@@ -209,11 +209,11 @@
                             <div class="flex-1">
                                 <div style="margin-bottom: 1rem;">
                                     <label class="form-label">Название актива</label>
-                                    <input type="text" x-model="a.name" @change="updateAsset(a.id, {name: a.name})" class="form-input" style="width: 100%; margin-top: 0.25rem;" />
+                                    <input type="text" x-model="a.name" @change="updateAsset(a.id, {name: a.name})" class="form-input" style="width: 95%; margin-top: 0.25rem;" />
                                 </div>
                                 <div style="margin-bottom: 1rem;">
                                     <label class="form-label">Стоимость (₽)</label>
-                                    <input type="number" x-model.number="a.value" @change="updateAsset(a.id, {value: a.value})" class="form-input" style="width: 100%; margin-top: 0.25rem;" />
+                                    <input type="number" x-model.number="a.value" @change="updateAsset(a.id, {value: a.value})" class="form-input" style="width: 95%; margin-top: 0.25rem;" />
                                 </div>
                                 <div style="margin-bottom: 1rem;">
                                     <label class="form-label">Приоритет актива</label>
@@ -244,14 +244,20 @@
                                 <div style="flex: 1;">
                                     <div style="margin-bottom: 1rem;">
                                         <label class="form-label">Угроза</label>
-                                        <input type="text" x-model="r.threat" @change="updateRiskField(r.id, 'threat', r.threat)" class="form-input" style="width: 100%; margin-top: 0.25rem;" />
+                                    </div>
+                                     <div style="margin-bottom: 1rem;">
+                                        <input type="text" x-model="r.threat" @change="updateRiskField(r.id, 'threat', r.threat)" class="form-input" style="width: 95%; margin-top: 0.25rem;" />
                                     </div>
                                     <div style="margin-bottom: 1rem;">
                                         <label class="form-label">Уязвимость</label>
-                                        <input type="text" x-model="r.vulnerability" @change="updateRiskField(r.id, 'vulnerability', r.vulnerability)" class="form-input" style="width: 100%; margin-top: 0.25rem;" />
+                                    </div>
+                                    <div style="margin-bottom: 1rem;">
+                                        <input type="text" x-model="r.vulnerability" @change="updateRiskField(r.id, 'vulnerability', r.vulnerability)" class="form-input" style="width: 95%; margin-top: 0.25rem;" />
+                                    </div>
+                                      <div style="margin-bottom: 1rem;">
+                                        <label class="form-label">Степень риска</label>
                                     </div>
                                     <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
-                                        <span class="risk-indicator" :class="getRiskCategory(r.score)"></span>
                                         <span :class="getRiskCategory(r.score) === 'low' ? 'risk-badge risk-low' : getRiskCategory(r.score) === 'medium' ? 'risk-badge risk-medium' : 'risk-badge risk-high'" x-text="getRiskCategoryLabel(r.score)"></span>
                                     </div>
                                     <div class="text-xs" style="color: var(--text-secondary); margin-bottom: 0.75rem;">
@@ -303,11 +309,11 @@
                         <div class="card">
                             <div style="margin-bottom: 1rem;">
                                 <label class="form-label">Название меры</label>
-                                <input type="text" x-model="m.name" @change="updateMeasureField(m.id, 'name', m.name)" class="form-input" style="width: 100%; margin-top: 0.25rem;" />
+                                <input type="text" x-model="m.name" @change="updateMeasureField(m.id, 'name', m.name)" class="form-input" style="width: 95%; margin-top: 0.25rem;" />
                             </div>
                             <div style="margin-bottom: 1rem;">
                                 <label class="form-label">Стоимость (₽)</label>
-                                <input type="number" x-model.number="m.cost" @change="updateMeasureField(m.id, 'cost', m.cost)" class="form-input" style="width: 100%; margin-top: 0.25rem;" />
+                                <input type="number" x-model.number="m.cost" @change="updateMeasureField(m.id, 'cost', m.cost)" class="form-input" style="width: 95%; margin-top: 0.25rem;" />
                             </div>
                             <div style="margin-bottom: 1rem;">
                                 <label class="form-label">Снижение ущерба (%)</label>
@@ -634,5 +640,4 @@
     <script src="database.js"></script>
     <script src="script.js"></script>
 </body>
-
 </html>
