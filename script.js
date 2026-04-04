@@ -5,7 +5,7 @@ document.addEventListener('alpine:init', () => {
       () => ({
         currentTab: 0,
         criteria: {
-          formula: 'damage * probability * priority',
+          formula: 'Урон ⋅ Вероятность ⋅ Приоритет',
           damageMax: 4,
           probMax: 4,
           priorityMax: 4,
@@ -360,7 +360,7 @@ document.addEventListener('alpine:init', () => {
 
           // Обновляем в объекте
           Object.assign(asset, updates);
-          
+
           // Сохраняем в БД
           db.updateAsset(assetId, updates);
 
@@ -471,7 +471,8 @@ document.addEventListener('alpine:init', () => {
           const asset = this.assets.find(a => a.id === risk.assetId);
           if (!asset) return;
 
-          risk.score = this.calculateRisk(risk.damage, risk.probability, asset.priority);
+          risk.score =
+              this.calculateRisk(risk.damage, risk.probability, asset.priority);
 
           // Если есть привязанная мера, пересчитываем остаточный риск
           if (risk.measureId) {
@@ -556,8 +557,10 @@ document.addEventListener('alpine:init', () => {
           Object.assign(measure, {[field]: value});
           db.updateMeasure(measureId, {[field]: value});
 
-          // Если изменились параметры снижения, пересчитываем остаточный риск для привязанного риска
-          if ((field === 'reduceDamage' || field === 'reduceProb') && measure.linkedRiskId) {
+          // Если изменились параметры снижения, пересчитываем остаточный риск
+          // для привязанного риска
+          if ((field === 'reduceDamage' || field === 'reduceProb') &&
+              measure.linkedRiskId) {
             const risk = this.risks.find(r => r.id === measure.linkedRiskId);
             if (risk) {
               risk.reduceDamage = measure.reduceDamage;
@@ -723,7 +726,8 @@ document.addEventListener('alpine:init', () => {
 
           this.closeLinkMeasureRiskModal();
           this.showNotification(
-              `✅ Мера "${measure.name}" перепривязана к риску "${risk.threat}"`,
+              `✅ Мера "${measure.name}" перепривязана к риску "${
+                  risk.threat}"`,
               'success');
         },
 
@@ -768,11 +772,11 @@ document.addEventListener('alpine:init', () => {
         getAvailableRisksForMeasureLinking() {
           return this.risks.map(r => {
             const asset = this.assets.find(a => a.id === r.assetId);
-            const isBound = r.measureId && r.measureId !== this.currentMeasureIdForLinking;
+            const isBound =
+                r.measureId && r.measureId !== this.currentMeasureIdForLinking;
             const label = `${r.threat} (${
-                  asset ? asset.name :
-                          'Актив ID:' + r.assetId}) - Риск: ${r.score}${
-                  isBound ? ' [есть другая мера]' : ''}`;
+                asset ? asset.name : 'Актив ID:' + r.assetId}) - Риск: ${
+                r.score}${isBound ? ' [есть другая мера]' : ''}`;
             return {id: r.id, label};
           });
         },
@@ -904,7 +908,7 @@ document.addEventListener('alpine:init', () => {
 
             // Сбрасываем критерии к значениям по умолчанию
             this.criteria = {
-              formula: 'damage * probability * priority',
+              formula: 'Урон ⋅ Вероятность ⋅ Приоритет',
               damageMax: 4,
               probMax: 4,
               priorityMax: 4,

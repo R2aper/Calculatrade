@@ -348,14 +348,14 @@
             <div class="card">
                 <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; color: var(--primary-color);">Формула расчёта риска</h3>
                 <div style="background: rgba(59, 130, 246, 0.1); padding: 1.5rem; border-radius: 8px; border-left: 4px solid var(--primary-color); margin-bottom: 1.5rem;">
-                    <div style="font-family: monospace; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 0.5rem;" x-text="criteria.formula"></div>
+                    <div style="font-family: monospace; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 0.5rem;">Риск = Ущерб ⋅ Вероятность ⋅ Приоритет</div>
                     <div class="text-sm text-muted">Текущая формула для расчёта риска</div>
                 </div>
                 <h4 style="font-size: 1rem; font-weight: 600; margin-bottom: 0.75rem;">Параметры:</h4>
                 <ul style="margin: 0; padding-left: 1.5rem;">
-                    <li style="margin-bottom: 0.5rem;"><strong>damage</strong> — степень ущерба (1–<span x-text="criteria.damageMax"></span>)</li>
-                    <li style="margin-bottom: 0.5rem;"><strong>probability</strong> — вероятность инцидента (1–<span x-text="criteria.probMax"></span>)</li>
-                    <li style="margin-bottom: 0.5rem;"><strong>priority</strong> — приоритет актива (1–<span x-text="criteria.priorityMax"></span>)</li>
+                    <li style="margin-bottom: 0.5rem;"><strong>Ущерб</strong> — степень ущерба (1–<span x-text="criteria.damageMax"></span>)</li>
+                    <li style="margin-bottom: 0.5rem;"><strong>Вероятность</strong> — вероятность инцидента (1–<span x-text="criteria.probMax"></span>)</li>
+                    <li style="margin-bottom: 0.5rem;"><strong>Приоритет</strong> — приоритет актива (1–<span x-text="criteria.priorityMax"></span>)</li>
                 </ul>
             </div>
 
@@ -363,18 +363,18 @@
                 <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; color: var(--success-color);">Формула остаточного риска</h3>
                 <div style="background: rgba(34, 197, 94, 0.1); padding: 1.5rem; border-radius: 8px; border-left: 4px solid var(--success-color); margin-bottom: 1.5rem;">
                     <div style="font-family: monospace; font-size: 0.95rem; color: var(--text-primary); margin-bottom: 0.75rem;">
-                        <div>damage' = damage × (1 - reduceDamage / 100)</div>
-                        <div>probability' = probability × (1 - reduceProb / 100)</div>
+                        <div>Ущерб' = Ущерб ⋅ (1 - СниженныйУщерб / 100)</div>
+                        <div>Вероятность' = Вероятность ⋅ (1 - СниженнаяВероятность / 100)</div>
                         <div style="margin-top: 0.5rem; border-top: 1px solid var(--success-color); padding-top: 0.5rem;">
-                            residualScore = damage' × probability' × priority
+                            ОстаточныйРиск= Ущерб' ⋅ Вероятность' ⋅ Приоритет
                         </div>
                     </div>
                     <div class="text-sm text-muted">Формула для расчёта риска ПОСЛЕ внедрения мер защиты</div>
                 </div>
                 <h4 style="font-size: 1rem; font-weight: 600; margin-bottom: 0.75rem;">Где:</h4>
                 <ul style="margin: 0; padding-left: 1.5rem;">
-                    <li style="margin-bottom: 0.5rem;"><strong>reduceDamage</strong> — процент снижения ущерба защитной мерой</li>
-                    <li style="margin-bottom: 0.5rem;"><strong>reduceProb</strong> — процент снижения вероятности защитной мерой</li>
+                    <li style="margin-bottom: 0.5rem;"><strong>СниженныйУщерб</strong> — процент снижения ущерба защитной мерой</li>
+                    <li style="margin-bottom: 0.5rem;"><strong>СниженнаяВероятность</strong> — процент снижения вероятности защитной мерой</li>
                 </ul>
             </div>
 
@@ -384,11 +384,11 @@
                     <div style="font-family: monospace; font-size: 0.9rem; color: var(--text-primary);">
                         <div style="margin-bottom: 0.75rem;">
                             <strong>Ожидаемый ущерб (до внедрения мер):</strong>
-                            <div style="margin-left: 1rem; margin-top: 0.25rem; font-size: 0.85rem;">sum(risk_score × asset_value) для всех рисков</div>
+                            <div style="margin-left: 1rem; margin-top: 0.25rem; font-size: 0.85rem;">сумма(БаллыРиска × Стоимость1Риска) для всех рисков</div>
                         </div>
                         <div style="margin-bottom: 0.75rem;">
                             <strong>Ожидаемый ущерб (после внедрения мер):</strong>
-                            <div style="margin-left: 1rem; margin-top: 0.25rem; font-size: 0.85rem;">sum(residual_score × asset_value) для всех рисков с мерами</div>
+                            <div style="margin-left: 1rem; margin-top: 0.25rem; font-size: 0.85rem;">сумма(ОстаточныйБалл × Стоимость1Риска) для всех рисков с мерами</div>
                         </div>
                         <div style="margin-bottom: 0.75rem; border-top: 1px solid var(--warning-color); padding-top: 0.75rem;">
                             <strong>Экономический эффект (годовой):</strong>
@@ -397,7 +397,7 @@
                     </div>
                 </div>
                 <div class="text-sm text-muted">
-                    <strong>Параметр расчета:</strong> costPerPoint = <span x-text="criteria.costPerPoint.toLocaleString('ru')"></span> ₽ за единицу риска
+                    <strong>Параметр расчета:</strong> Цена за 1 единицу = <span x-text="criteria.costPerPoint.toLocaleString('ru')"></span> ₽ за единицу риска
                 </div>
             </div>
 
@@ -625,8 +625,7 @@
                         'notification-success': notification.type === 'success',
                         'notification-error': notification.type === 'error',
                         'notification-info': notification.type === 'info'
-                    }" class="notification" x-text="notification.message" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform scale-90 -translate-y-4" x-transition:enter-end="opacity-100 transform scale-100 translate-y-0"
-            x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 transform scale-100 translate-y-0" x-transition:leave-end="opacity-0 transform scale-90 -translate-y-4">
+                    }" class="notification" x-text="notification.message">
         </div>
     </div>
     </div>
