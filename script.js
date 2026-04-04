@@ -354,6 +354,19 @@ document.addEventListener('alpine:init', () => {
               `✅ Приоритет актива "${asset.name}" обновлён`, 'success');
         },
 
+        updateAsset(assetId, updates) {
+          const asset = this.assets.find(a => a.id === assetId);
+          if (!asset) return;
+
+          // Обновляем в объекте
+          Object.assign(asset, updates);
+          
+          // Сохраняем в БД
+          db.updateAsset(assetId, updates);
+
+          this.showNotification('✅ Актив обновлен', 'success');
+        },
+
         deleteAsset(id) {
           const asset = this.assets.find(a => a.id === id);
           const linkedRisks = this.risks.filter(r => r.assetId === id);
@@ -444,6 +457,41 @@ document.addEventListener('alpine:init', () => {
           }
         },
 
+        updateRiskField(riskId, field, value) {
+          const risk = this.risks.find(r => r.id === riskId);
+          if (!risk) return;
+
+          const updates = {[field]: value};
+          db.updateRisk(riskId, updates);
+          this.showNotification('✅ Риск обновлен', 'success');
+        },
+
+        recalculateRiskScore(risk) {
+          // Пересчитываем исходный риск после изменения damage/probability
+          const asset = this.assets.find(a => a.id === risk.assetId);
+          if (!asset) return;
+
+          risk.score = this.calculateRisk(risk.damage, risk.probability, asset.priority);
+
+          // Если есть привязанная мера, пересчитываем остаточный риск
+          if (risk.measureId) {
+            const measure = this.measures.find(m => m.id === risk.measureId);
+            if (measure) {
+              risk.residualScore = this.calculateResidualRisk(
+                  risk, measure.reduceDamage, measure.reduceProb);
+            }
+          }
+
+          db.updateRisk(risk.id, {
+            damage: risk.damage,
+            probability: risk.probability,
+            score: risk.score,
+            residualScore: risk.residualScore
+          });
+
+          this.showNotification('✅ Параметры риска обновлены', 'success');
+        },
+
         deleteRisk(id) {
           db.deleteRisk(id);
           this.risks = this.risks.filter(r => r.id !== id);
@@ -499,6 +547,33 @@ document.addEventListener('alpine:init', () => {
                 `✅ Защитная мера "${this.measureForm.name}" добавлена`,
                 'success');
           }
+        },
+
+        updateMeasureField(measureId, field, value) {
+          const measure = this.measures.find(m => m.id === measureId);
+          if (!measure) return;
+
+          Object.assign(measure, {[field]: value});
+          db.updateMeasure(measureId, {[field]: value});
+
+          // Если изменились параметры снижения, пересчитываем остаточный риск для привязанного риска
+          if ((field === 'reduceDamage' || field === 'reduceProb') && measure.linkedRiskId) {
+            const risk = this.risks.find(r => r.id === measure.linkedRiskId);
+            if (risk) {
+              risk.reduceDamage = measure.reduceDamage;
+              risk.reduceProb = measure.reduceProb;
+              risk.residualScore = this.calculateResidualRisk(
+                  risk, measure.reduceDamage, measure.reduceProb);
+
+              db.updateRisk(risk.id, {
+                reduceDamage: risk.reduceDamage,
+                reduceProb: risk.reduceProb,
+                residualScore: risk.residualScore
+              });
+            }
+          }
+
+          this.showNotification('✅ Мера обновлена', 'success');
         },
 
         deleteMeasure(id) {
@@ -606,10 +681,29 @@ document.addEventListener('alpine:init', () => {
             return;
           }
 
-          if (risk.measureId) {
-            this.showNotification(
-                '⚠️ К этому риску уже привязана мера', 'error');
-            return;
+          // Если новый риск уже привязан к мере - отвязать старую привязку
+          if (risk.measureId && risk.measureId !== measure.id) {
+            const oldMeasure = this.measures.find(m => m.id === risk.measureId);
+            if (oldMeasure) {
+              db.updateMeasure(oldMeasure.id, {linkedRiskId: null});
+            }
+          }
+
+          // Если эта мера уже привязана к другому риску - отвязать
+          if (measure.linkedRiskId && measure.linkedRiskId !== risk.id) {
+            const oldRisk = this.risks.find(r => r.id === measure.linkedRiskId);
+            if (oldRisk) {
+              oldRisk.measureId = null;
+              oldRisk.reduceDamage = 0;
+              oldRisk.reduceProb = 0;
+              oldRisk.residualScore = null;
+              db.updateRisk(oldRisk.id, {
+                measure_id: null,
+                reduceDamage: 0,
+                reduceProb: 0,
+                residualScore: null
+              });
+            }
           }
 
           risk.measureId = this.currentMeasureIdForLinking;
@@ -629,7 +723,7 @@ document.addEventListener('alpine:init', () => {
 
           this.closeLinkMeasureRiskModal();
           this.showNotification(
-              `✅ Риск "${risk.threat}" связан с мерой "${measure.name}"`,
+              `✅ Мера "${measure.name}" перепривязана к риску "${risk.threat}"`,
               'success');
         },
 
@@ -672,14 +766,14 @@ document.addEventListener('alpine:init', () => {
         },
 
         getAvailableRisksForMeasureLinking() {
-          return this.risks.filter(r => !r.measureId).map(r => {
+          return this.risks.map(r => {
             const asset = this.assets.find(a => a.id === r.assetId);
-            return {
-              id: r.id,
-              label: `${r.threat} (${
+            const isBound = r.measureId && r.measureId !== this.currentMeasureIdForLinking;
+            const label = `${r.threat} (${
                   asset ? asset.name :
-                          'Актив ID:' + r.assetId}) - Риск: ${r.score}`
-            };
+                          'Актив ID:' + r.assetId}) - Риск: ${r.score}${
+                  isBound ? ' [есть другая мера]' : ''}`;
+            return {id: r.id, label};
           });
         },
 

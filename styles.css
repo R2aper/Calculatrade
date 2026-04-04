@@ -490,6 +490,10 @@ input, select {
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
 }
 
+.data-grid.cols-4 {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}
+
 /* Значки и индикаторы */
 .section-title {
     font-size: 1.875rem;

@@ -25,6 +25,7 @@
                 <button @click="showTab(3)" :class="currentTab === 3 && 'active'" class="sidebar-button">⚠️ Риски</button>
                 <button @click="showTab(4)" :class="currentTab === 4 && 'active'" class="sidebar-button">🛡️ Меры</button>
                 <button @click="showTab(5)" :class="currentTab === 5 && 'active'" class="sidebar-button">📈 Экономика</button>
+                <button @click="showTab(6)" :class="currentTab === 6 && 'active'" class="sidebar-button">📖 Формулы</button>
             </div>
         </div>
 
@@ -35,10 +36,16 @@
                     <h1 style="margin: 0; font-size: 1.5rem;">Калькулятор экономической эффективности ИБ</h1>
                 </div>
 
-                <!-- Кнопка авторизации -->
+                <!-- Кнопка авторизации и информация пользователя -->
                 <div style="display: flex; align-items: center; gap: 1rem;">
+                    <template x-if="isLoggedIn">
+                        <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: rgba(59, 130, 246, 0.1); border-radius: 8px; border: 1px solid var(--primary-color);">
+                            <span style="color: var(--primary-color); font-weight: 500;">👤</span>
+                            <span x-text="`${currentUser.login}`" style="color: var(--text-primary); font-weight: 500;"></span>
+                        </div>
+                    </template>
                     <button @click="toggleAuthModal()" class="btn btn-secondary" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem;">
-                    👤 Вход/авторизация
+                    👤 <span x-text="isLoggedIn ? 'Выход' : 'Вход'"></span>
                 </button>
 
                     <button @click="resetAll()" class="btn btn-danger">🔄 Сбросить всё</button>
@@ -67,8 +74,8 @@
 
                         <div class="modal-body">
                             <div class="form-group">
-                                <label class="form-label">Логин / Email</label>
-                                <input type="text" x-model="authForm.login" placeholder="user@example.com" class="form-input" />
+                                <label class="form-label">Логин</label>
+                                <input type="text" x-model="authForm.login" placeholder="username" class="form-input" />
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Пароль</label>
@@ -177,7 +184,7 @@
                                     <span class="font-bold text-lg" x-text="criteria.riskAppetite" style="color: var(--success-color);">12</span>
                                     <span>Средний / Высокий</span>
                                 </div>
-                                <div class="text-xs text-muted" style="margin-top: 0.5rem;">Риски ≤ {{ criteria.riskAppetite }} - приемлемые, выше - требуют внимания</div>
+                                <div class="text-xs text-muted" style="margin-top: 0.5rem;">Риски ≤ заданного критерия - приемлемые, выше - требуют внимания</div>
                             </div>
 
                             <div class="form-group" style="margin-bottom: 2rem;">
@@ -200,19 +207,25 @@
                         <template x-for="a in assets" :key="a.id">
                         <div class="card">
                             <div class="flex-1">
-                                <div class="font-semibold" x-text="a.name" style="font-size: 1.1rem; margin-bottom: 1rem;"></div>
+                                <div style="margin-bottom: 1rem;">
+                                    <label class="form-label">Название актива</label>
+                                    <input type="text" x-model="a.name" @change="updateAsset(a.id, {name: a.name})" class="form-input" style="width: 100%; margin-top: 0.25rem;" />
+                                </div>
+                                <div style="margin-bottom: 1rem;">
+                                    <label class="form-label">Стоимость (₽)</label>
+                                    <input type="number" x-model.number="a.value" @change="updateAsset(a.id, {value: a.value})" class="form-input" style="width: 100%; margin-top: 0.25rem;" />
+                                </div>
                                 <div style="margin-bottom: 1rem;">
                                     <label class="form-label">Приоритет актива</label>
                                     <div style="display: flex; align-items: center; gap: 1rem; margin-top: 0.5rem;">
                                         <input type="range" min="1" max="4" x-model.number="a.priority" @change="updateAssetPriority(a.id, a.priority)" class="flex-1" style="accent-color: var(--primary-color)" />
-                                        <span class="font-mono font-bold" style="color: var(--primary-color);" x-text="a.priority">3</span>
+                                        <span class="font-mono font-bold" style="color: var(--primary-color); min-width: 2rem;" x-text="a.priority">3</span>
                                     </div>
                                 </div>
                                 <div class="text-xs text-muted" x-text="`${getRiskCountForAsset(a.id)} риск${getRiskCountForAsset(a.id) === 1 ? '' : 'ов'} привязано`"></div>
                             </div>
                             <div style="text-align: right; margin-top: 1rem;">
-                                <div style="font-size: 1.5rem; font-weight: bold; margin-bottom: 0.5rem;" x-text="`${a.value.toLocaleString('ru')} ₽`"></div>
-                                <button @click="deleteAsset(a.id)" class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">📋 Удалить</button>
+                                <button @click="deleteAsset(a.id)" class="btn btn-danger" style="padding: 0.5rem 0.75rem; font-size: 0.75rem; width: 100%;">🗑️ Удалить</button>
                             </div>
                         </div>
                     </template>
@@ -229,17 +242,36 @@
                         <div class="card">
                             <div style="display: flex; justify-content: space-between; align-items: start; gap: 1.5rem;">
                                 <div style="flex: 1;">
-                                    <div class="font-semibold" x-text="r.threat" style="font-size: 1.1rem; margin-bottom: 0.5rem;"></div>
-                                    <div class="text-sm text-muted" x-text="r.vulnerability" style="margin-bottom: 1rem;"></div>
-                                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                    <div style="margin-bottom: 1rem;">
+                                        <label class="form-label">Угроза</label>
+                                        <input type="text" x-model="r.threat" @change="updateRiskField(r.id, 'threat', r.threat)" class="form-input" style="width: 100%; margin-top: 0.25rem;" />
+                                    </div>
+                                    <div style="margin-bottom: 1rem;">
+                                        <label class="form-label">Уязвимость</label>
+                                        <input type="text" x-model="r.vulnerability" @change="updateRiskField(r.id, 'vulnerability', r.vulnerability)" class="form-input" style="width: 100%; margin-top: 0.25rem;" />
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
                                         <span class="risk-indicator" :class="getRiskCategory(r.score)"></span>
                                         <span :class="getRiskCategory(r.score) === 'low' ? 'risk-badge risk-low' : getRiskCategory(r.score) === 'medium' ? 'risk-badge risk-medium' : 'risk-badge risk-high'" x-text="getRiskCategoryLabel(r.score)"></span>
                                     </div>
                                     <div class="text-xs" style="color: var(--text-secondary); margin-bottom: 0.75rem;">
                                         <strong>Актив:</strong> <span x-text="`${assets.find(a => a.id === r.assetId)?.name || 'N/A'} (приоритет: ${r.priority})`"></span>
                                     </div>
-                                    <div class="text-xs" style="color: var(--text-secondary); margin-bottom: 0.75rem;">
-                                        <strong>ID:</strong> <span class="font-mono" x-text="r.id"></span>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                                        <div>
+                                            <label class="form-label">Ущерб (1-4)</label>
+                                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem;">
+                                                <input type="range" min="1" max="4" x-model.number="r.damage" @change="recalculateRiskScore(r)" style="flex: 1;" />
+                                                <span x-text="r.damage" style="font-weight: bold; color: var(--primary-color); min-width: 1.5rem;"></span>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="form-label">Вероятность (1-4)</label>
+                                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem;">
+                                                <input type="range" min="1" max="4" x-model.number="r.probability" @change="recalculateRiskScore(r)" style="flex: 1;" />
+                                                <span x-text="r.probability" style="font-weight: bold; color: var(--primary-color); min-width: 1.5rem;"></span>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div class="text-xs">
                                         <strong style="color: var(--text-danger);">Исходный риск:</strong> <span class="font-mono font-bold" style="color: var(--danger-color);" x-text="r.score"></span> баллов
@@ -253,7 +285,8 @@
                                         <button @click="openLinkMeasureModal(r.id)" class="btn btn-secondary" style="font-size: 0.875rem; padding: 0.5rem 0.75rem;">🔗 Привязать меру</button>
                                     </template>
                         <template x-if="r.measureId">
-                                        <button @click="unlinkMeasureFromRisk(r.id)" class="btn btn-secondary" style="font-size: 0.875rem; padding: 0.5rem 0.75rem;">❌ Отвязать меру</button>
+                                        <button @click="unlinkMeasureFromRisk(r.id)" class="btn btn-secondary" style="font-size: 0.875rem; padding: 0.5rem 0.75rem;">❌ Отвязать</button>
+                                        <button @click="openLinkMeasureRiskModal(r.id)" class="btn btn-secondary" style="font-size: 0.875rem; padding: 0.5rem 0.75rem;">🔄 Перепривязать</button>
                                     </template>
                         <button @click="deleteRisk(r.id)" class="btn btn-danger" style="font-size: 0.875rem; padding: 0.5rem 0.75rem;">🗑️ Удалить</button>
                     </div>
@@ -268,16 +301,35 @@
         <div class="data-grid cols-2">
             <template x-for="m in measures" :key="m.id">
                         <div class="card">
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
-                                <div class="font-semibold" x-text="m.name"></div>
-                                <div style="color: var(--success-color); font-weight: bold;" x-text="`${m.cost.toLocaleString('ru')} ₽`"></div>
+                            <div style="margin-bottom: 1rem;">
+                                <label class="form-label">Название меры</label>
+                                <input type="text" x-model="m.name" @change="updateMeasureField(m.id, 'name', m.name)" class="form-input" style="width: 100%; margin-top: 0.25rem;" />
                             </div>
-                            <div class="text-xs text-muted" x-text="`Снижение ущерба: ${m.reduceDamage}% | Вероятности: ${m.reduceProb}%`" style="margin-bottom: 1rem;"></div>
+                            <div style="margin-bottom: 1rem;">
+                                <label class="form-label">Стоимость (₽)</label>
+                                <input type="number" x-model.number="m.cost" @change="updateMeasureField(m.id, 'cost', m.cost)" class="form-input" style="width: 100%; margin-top: 0.25rem;" />
+                            </div>
+                            <div style="margin-bottom: 1rem;">
+                                <label class="form-label">Снижение ущерба (%)</label>
+                                <div style="display: flex; align-items: center; gap: 1rem; margin-top: 0.5rem;">
+                                    <input type="range" min="0" max="100" x-model.number="m.reduceDamage" @change="updateMeasureField(m.id, 'reduceDamage', m.reduceDamage)" style="flex: 1;" />
+                                    <span x-text="m.reduceDamage + '%'" style="font-weight: bold; color: var(--success-color); min-width: 3rem;"></span>
+                                </div>
+                            </div>
+                            <div style="margin-bottom: 1rem;">
+                                <label class="form-label">Снижение вероятности (%)</label>
+                                <div style="display: flex; align-items: center; gap: 1rem; margin-top: 0.5rem;">
+                                    <input type="range" min="0" max="100" x-model.number="m.reduceProb" @change="updateMeasureField(m.id, 'reduceProb', m.reduceProb)" style="flex: 1;" />
+                                    <span x-text="m.reduceProb + '%'" style="font-weight: bold; color: var(--success-color); min-width: 3rem;"></span>
+                                </div>
+                            </div>
                             <template x-if="getEffectForMeasure(m)">
-                                <div class="text-sm" style="margin-bottom: 1rem;">
+                                <div class="text-sm" style="margin-bottom: 1rem; padding: 1rem; background: rgba(34, 197, 94, 0.1); border-radius: 8px;">
+                                    <div>✅ Привязана к риску</div>
                                     <div>Эффект: <span class="font-bold" style="color: var(--success-color);" x-text="`${getEffectForMeasure(m).effect.toLocaleString('ru')} ₽`"></span></div>
                                     <div>ROSI: <span style="color: var(--primary-color); font-weight: bold;" x-text="`${getEffectForMeasure(m).rosi}%`"></span></div>
                                 </div>
+                                <button @click="openLinkMeasureRiskModal(m.id)" class="btn btn-secondary" style="margin-bottom: 0.5rem; font-size: 0.875rem; width: 100%;">🔄 Перепривязать</button>
                             </template>
             <template x-if="!getEffectForMeasure(m)">
                                 <button @click="openLinkMeasureRiskModal(m.id)" class="btn btn-secondary" style="margin-bottom: 0.5rem; font-size: 0.875rem; width: 100%;">🔗 Привязать к риску</button>
@@ -288,6 +340,83 @@
     </div>
     <button @click="openAddMeasureModal()" class="btn btn-primary" style="display: block; margin: 2rem auto;">+ Создать новую защитную меру</button>
     </div>
+
+    <!-- Таб 6 — Формулы -->
+    <div x-show="currentTab === 6">
+        <h2 class="section-title">Информация об используемых формулах</h2>
+        <div class="data-grid cols-1" style="grid-template-columns: 1fr;">
+            <div class="card">
+                <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; color: var(--primary-color);">Формула расчёта риска</h3>
+                <div style="background: rgba(59, 130, 246, 0.1); padding: 1.5rem; border-radius: 8px; border-left: 4px solid var(--primary-color); margin-bottom: 1.5rem;">
+                    <div style="font-family: monospace; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 0.5rem;" x-text="criteria.formula"></div>
+                    <div class="text-sm text-muted">Текущая формула для расчёта риска</div>
+                </div>
+                <h4 style="font-size: 1rem; font-weight: 600; margin-bottom: 0.75rem;">Параметры:</h4>
+                <ul style="margin: 0; padding-left: 1.5rem;">
+                    <li style="margin-bottom: 0.5rem;"><strong>damage</strong> — степень ущерба (1–<span x-text="criteria.damageMax"></span>)</li>
+                    <li style="margin-bottom: 0.5rem;"><strong>probability</strong> — вероятность инцидента (1–<span x-text="criteria.probMax"></span>)</li>
+                    <li style="margin-bottom: 0.5rem;"><strong>priority</strong> — приоритет актива (1–<span x-text="criteria.priorityMax"></span>)</li>
+                </ul>
+            </div>
+
+            <div class="card">
+                <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; color: var(--success-color);">Формула остаточного риска</h3>
+                <div style="background: rgba(34, 197, 94, 0.1); padding: 1.5rem; border-radius: 8px; border-left: 4px solid var(--success-color); margin-bottom: 1.5rem;">
+                    <div style="font-family: monospace; font-size: 0.95rem; color: var(--text-primary); margin-bottom: 0.75rem;">
+                        <div>damage' = damage × (1 - reduceDamage / 100)</div>
+                        <div>probability' = probability × (1 - reduceProb / 100)</div>
+                        <div style="margin-top: 0.5rem; border-top: 1px solid var(--success-color); padding-top: 0.5rem;">
+                            residualScore = damage' × probability' × priority
+                        </div>
+                    </div>
+                    <div class="text-sm text-muted">Формула для расчёта риска ПОСЛЕ внедрения мер защиты</div>
+                </div>
+                <h4 style="font-size: 1rem; font-weight: 600; margin-bottom: 0.75rem;">Где:</h4>
+                <ul style="margin: 0; padding-left: 1.5rem;">
+                    <li style="margin-bottom: 0.5rem;"><strong>reduceDamage</strong> — процент снижения ущерба защитной мерой</li>
+                    <li style="margin-bottom: 0.5rem;"><strong>reduceProb</strong> — процент снижения вероятности защитной мерой</li>
+                </ul>
+            </div>
+
+            <div class="card">
+                <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; color: var(--warning-color);">Финансовые расчёты</h3>
+                <div style="background: rgba(245, 158, 11, 0.1); padding: 1.5rem; border-radius: 8px; border-left: 4px solid var(--warning-color); margin-bottom: 1.5rem;">
+                    <div style="font-family: monospace; font-size: 0.9rem; color: var(--text-primary);">
+                        <div style="margin-bottom: 0.75rem;">
+                            <strong>Ожидаемый ущерб (до внедрения мер):</strong>
+                            <div style="margin-left: 1rem; margin-top: 0.25rem; font-size: 0.85rem;">sum(risk_score × asset_value) для всех рисков</div>
+                        </div>
+                        <div style="margin-bottom: 0.75rem;">
+                            <strong>Ожидаемый ущерб (после внедрения мер):</strong>
+                            <div style="margin-left: 1rem; margin-top: 0.25rem; font-size: 0.85rem;">sum(residual_score × asset_value) для всех рисков с мерами</div>
+                        </div>
+                        <div style="margin-bottom: 0.75rem; border-top: 1px solid var(--warning-color); padding-top: 0.75rem;">
+                            <strong>Экономический эффект (годовой):</strong>
+                            <div style="margin-left: 1rem; margin-top: 0.25rem; font-size: 0.85rem;\">(Ущерб до - Ущерб после) - Инвестиции</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="text-sm text-muted">
+                    <strong>Параметр расчета:</strong> costPerPoint = <span x-text="criteria.costPerPoint.toLocaleString('ru')"></span> ₽ за единицу риска
+                </div>
+            </div>
+
+            <div class="card">
+                <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; color: var(--primary-color);">Пороги и критерии</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div style="background: rgba(59, 130, 246, 0.1); padding: 1rem; border-radius: 8px;">
+                        <div class="text-sm text-muted">Риск-аппетит (макс. приемлемый риск):</div>
+                        <div style="font-size: 1.5rem; font-weight: 600; color: var(--primary-color); margin-top: 0.5rem;" x-text="criteria.riskAppetite"></div>
+                    </div>
+                    <div style="background: rgba(245, 158, 11, 0.1); padding: 1rem; border-radius: 8px;">
+                        <div class="text-sm text-muted">Единица риска в стоимости:</div>
+                        <div style="font-size: 1.1rem; font-weight: 600; color: var(--warning-color); margin-top: 0.5rem;" x-text="criteria.costPerPoint.toLocaleString('ru') + ' ₽'"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Таб 5 — Экономика -->
     <div x-show="currentTab === 5">
         <h2 class="section-title">Экономическая эффективность внедрения ИБ</h2>
