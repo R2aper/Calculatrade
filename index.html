@@ -121,7 +121,7 @@
                             <div class="stat-label" style="margin-top: 0.5rem;">в год</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-label">Средний ROI</div>
+                            <div class="stat-label">Средний ROSI</div>
                             <div class="stat-value" x-text="avgROI + '%'">0%</div>
                             <div class="stat-label" style="margin-top: 0.5rem;">средний</div>
                         </div>
@@ -142,7 +142,7 @@
                 <!-- Таб 1 — Критерии -->
                 <div x-show="currentTab === 1">
                     <div style="max-width: 48rem; margin: 0 auto;">
-                        <h2 class="section-title">Настройка критериев (ГОСТ Р 27005)</h2>
+                        <h2 class="section-title">Настройка критериев (<a href="https://docs.cntd.ru/document/1200084141?ysclid=mnlcg226sk908894709" target="_blank" style="color: inherit; text-decoration: underline; cursor: pointer;">ГОСТ Р 27005</a>)</h2>
                         <div class="card" style="padding: 2rem;">
                             <div style="margin-bottom: 2rem;">
                                 <label class="form-label">Формула риска</label>
@@ -352,73 +352,64 @@
         <h2 class="section-title">Информация об используемых формулах</h2>
         <div class="data-grid cols-1" style="grid-template-columns: 1fr;">
             <div class="card">
-                <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; color: var(--primary-color);">Формула расчёта риска</h3>
-                <div style="background: rgba(59, 130, 246, 0.1); padding: 1.5rem; border-radius: 8px; border-left: 4px solid var(--primary-color); margin-bottom: 1.5rem;">
-                    <div style="font-family: monospace; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 0.5rem;">Риск = Ущерб ⋅ Вероятность ⋅ Приоритет</div>
-                    <div class="text-sm text-muted">Текущая формула для расчёта риска</div>
+                <h3 style="color: var(--primary-color);">1. Формула расчёта риска</h3>
+                <div style="background: rgba(59, 130, 246, 0.1); padding: 1.25rem; border-radius: 10px; margin: 1rem 0;">
+                    <strong style="font-family: monospace; font-size: 1.15rem;">
+                        Риск = Ущерб × Вероятность × Приоритет актива
+                    </strong>
                 </div>
-                <h4 style="font-size: 1rem; font-weight: 600; margin-bottom: 0.75rem;">Параметры:</h4>
-                <ul style="margin: 0; padding-left: 1.5rem;">
-                    <li style="margin-bottom: 0.5rem;"><strong>Ущерб</strong> — степень ущерба (1–<span x-text="criteria.damageMax"></span>)</li>
-                    <li style="margin-bottom: 0.5rem;"><strong>Вероятность</strong> — вероятность инцидента (1–<span x-text="criteria.probMax"></span>)</li>
-                    <li style="margin-bottom: 0.5rem;"><strong>Приоритет</strong> — приоритет актива (1–<span x-text="criteria.priorityMax"></span>)</li>
-                </ul>
+                <p class="text-muted">Основная формула для оценки уровня риска (от 1 до 64 баллов).</p>
             </div>
 
             <div class="card">
-                <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; color: var(--success-color);">Формула остаточного риска</h3>
-                <div style="background: rgba(34, 197, 94, 0.1); padding: 1.5rem; border-radius: 8px; border-left: 4px solid var(--success-color); margin-bottom: 1.5rem;">
-                    <div style="font-family: monospace; font-size: 0.95rem; color: var(--text-primary); margin-bottom: 0.75rem;">
-                        <div>Ущерб' = Ущерб ⋅ (1 - СниженныйУщерб / 100)</div>
-                        <div>Вероятность' = Вероятность ⋅ (1 - СниженнаяВероятность / 100)</div>
-                        <div style="margin-top: 0.5rem; border-top: 1px solid var(--success-color); padding-top: 0.5rem;">
-                            ОстаточныйРиск= Ущерб' ⋅ Вероятность' ⋅ Приоритет
-                        </div>
+                <h3 style="color: var(--success-color);">2. Формула остаточного риска</h3>
+                <div style="background: rgba(34, 197, 94, 0.1); padding: 1.25rem; border-radius: 10px; margin: 1rem 0;">
+                    <div style="font-family: monospace; line-height: 1.6;">
+                        Остаточный риск = (Ущерб × (1 − Снижение ущерба / 100)) ×<br>
+                        (Вероятность × (1 − Снижение вероятности / 100)) × Приоритет
                     </div>
-                    <div class="text-sm text-muted">Формула для расчёта риска ПОСЛЕ внедрения мер защиты</div>
                 </div>
-                <h4 style="font-size: 1rem; font-weight: 600; margin-bottom: 0.75rem;">Где:</h4>
-                <ul style="margin: 0; padding-left: 1.5rem;">
-                    <li style="margin-bottom: 0.5rem;"><strong>СниженныйУщерб</strong> — процент снижения ущерба защитной мерой</li>
-                    <li style="margin-bottom: 0.5rem;"><strong>СниженнаяВероятность</strong> — процент снижения вероятности защитной мерой</li>
-                </ul>
+                <p class="text-muted">Показывает уровень риска после применения защитной меры.</p>
             </div>
 
             <div class="card">
-                <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; color: var(--warning-color);">Финансовые расчёты</h3>
-                <div style="background: rgba(245, 158, 11, 0.1); padding: 1.5rem; border-radius: 8px; border-left: 4px solid var(--warning-color); margin-bottom: 1.5rem;">
-                    <div style="font-family: monospace; font-size: 0.9rem; color: var(--text-primary);">
-                        <div style="margin-bottom: 0.75rem;">
-                            <strong>Ожидаемый ущерб (до внедрения мер):</strong>
-                            <div style="margin-left: 1rem; margin-top: 0.25rem; font-size: 0.85rem;">сумма(БаллыРиска × Стоимость1Риска) для всех рисков</div>
-                        </div>
-                        <div style="margin-bottom: 0.75rem;">
-                            <strong>Ожидаемый ущерб (после внедрения мер):</strong>
-                            <div style="margin-left: 1rem; margin-top: 0.25rem; font-size: 0.85rem;">сумма(ОстаточныйБалл × Стоимость1Риска) для всех рисков с мерами</div>
-                        </div>
-                        <div style="margin-bottom: 0.75rem; border-top: 1px solid var(--warning-color); padding-top: 0.75rem;">
-                            <strong>Экономический эффект (годовой):</strong>
-                            <div style="margin-left: 1rem; margin-top: 0.25rem; font-size: 0.85rem;\">(Ущерб до - Ущерб после) - Инвестиции</div>
-                        </div>
-                    </div>
+                <h3 style="color: var(--warning-color);">3. Ожидаемый ущерб (в рублях)</h3>
+                <div style="background: rgba(245, 158, 11, 0.1); padding: 1.25rem; border-radius: 10px; margin: 1rem 0;">
+                    <strong style="font-family: monospace;">
+                        Ожидаемый ущерб = Баллы риска × Стоимость 1 балла риска
+                    </strong>
                 </div>
-                <div class="text-sm text-muted">
-                    <strong>Параметр расчета:</strong> Цена за 1 единицу = <span x-text="criteria.costPerPoint.toLocaleString('ru')"></span> ₽ за единицу риска
-                </div>
+                <p class="text-muted">Переводит балльную оценку риска в денежный эквивалент.</p>
             </div>
 
             <div class="card">
-                <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; color: var(--primary-color);">Пороги и критерии</h3>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div style="background: rgba(59, 130, 246, 0.1); padding: 1rem; border-radius: 8px;">
-                        <div class="text-sm text-muted">Риск-аппетит (макс. приемлемый риск):</div>
-                        <div style="font-size: 1.5rem; font-weight: 600; color: var(--primary-color); margin-top: 0.5rem;" x-text="criteria.riskAppetite"></div>
-                    </div>
-                    <div style="background: rgba(245, 158, 11, 0.1); padding: 1rem; border-radius: 8px;">
-                        <div class="text-sm text-muted">Единица риска в стоимости:</div>
-                        <div style="font-size: 1.1rem; font-weight: 600; color: var(--warning-color); margin-top: 0.5rem;" x-text="criteria.costPerPoint.toLocaleString('ru') + ' ₽'"></div>
+                <h3 style="color: var(--primary-color);">4. Net ROSI (Чистый возврат инвестиций в ИБ)</h3>
+                <div style="background: rgba(59, 130, 246, 0.1); padding: 1.25rem; border-radius: 10px; margin: 1rem 0;">
+                    <div style="font-family: monospace; line-height: 1.6;">
+                        Net ROSI = ((Снижение потерь − Стоимость меры) / Стоимость меры) × 100%
                     </div>
                 </div>
+                <p class="text-muted">Показывает реальную эффективность меры с учётом её стоимости.</p>
+            </div>
+
+            <div class="card">
+                <h3 style="color: var(--success-color);">5. Чистый экономический эффект</h3>
+                <div style="background: rgba(34, 197, 94, 0.1); padding: 1.25rem; border-radius: 10px; margin: 1rem 0;">
+                    <strong style="font-family: monospace;">
+                        Чистый эффект = (Ожидаемые потери до мер − Ожидаемые потери после мер) − Стоимость всех мер
+                    </strong>
+                </div>
+                <p class="text-muted">Реальная финансовая выгода компании после внедрения всех мер.</p>
+            </div>
+
+            <div class="card">
+                <h3 style="color: var(--warning-color);">6. Экономический эффект (без вычета затрат)</h3>
+                <div style="background: rgba(245, 158, 11, 0.1); padding: 1.25rem; border-radius: 10px; margin: 1rem 0;">
+                    <strong style="font-family: monospace;">
+                        Экономический эффект = Сумма снижения ожидаемых потерь по всем рискам
+                    </strong>
+                </div>
+                <p class="text-muted">Показывает, сколько всего удалось "сэкономить" благодаря мерам (без учёта их стоимости).</p>
             </div>
         </div>
     </div>
