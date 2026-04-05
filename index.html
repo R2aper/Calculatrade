@@ -19,7 +19,7 @@
                 <h2>ИБ-Эффект</h2>
             </div>
             <div class="sidebar-content">
-                <button @click="showTab(0)" :class="currentTab === 0 && 'active'" class="sidebar-button">📊 Дашборд</button>
+                <button @click="showTab(0)" :class="currentTab === 0 && 'active'" class="sidebar-button">📊 Обзор</button>
                 <button @click="showTab(1)" :class="currentTab === 1 && 'active'" class="sidebar-button">⚙️ Критерии</button>
                 <button @click="showTab(2)" :class="currentTab === 2 && 'active'" class="sidebar-button">💼 Активы</button>
                 <button @click="showTab(3)" :class="currentTab === 3 && 'active'" class="sidebar-button">⚠️ Риски</button>
@@ -103,7 +103,7 @@
 
                 <!-- Таб 0 — Дашборд -->
                 <div x-show="currentTab === 0">
-                    <h2 class="section-title">Дашборд</h2>
+                    <h2 class="section-title">Обзор</h2>
                     <div class="data-grid cols-4">
                         <div class="stat-card">
                             <div class="stat-label">Общий риск до мер</div>
@@ -142,7 +142,7 @@
                 <!-- Таб 1 — Критерии -->
                 <div x-show="currentTab === 1">
                     <div style="max-width: 48rem; margin: 0 auto;">
-                        <h2 class="section-title">Настройка критериев (<a href="https://docs.cntd.ru/document/1200084141?ysclid=mnlcg226sk908894709" target="_blank" style="color: inherit; text-decoration: underline; cursor: pointer;">ГОСТ Р 27005</a>)</h2>
+                        <h2 class="section-title">Настройка критериев (<a href="https://docs.cntd.ru/document/1200084141?ysclid=mnlcg226sk908894709" target="_blank" style="color: inherit; text-decoration: underline; cursor: pointer;">ГОСТ Р 27005 Информационная технология. Методы и средства обеспечения безопасности. Менеджмент риска информационной безопасности</a>)</h2>
                         <div class="card" style="padding: 2rem;">
                             <div style="margin-bottom: 2rem;">
                                 <label class="form-label">Формула риска</label>
