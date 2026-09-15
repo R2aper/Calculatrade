@@ -63,7 +63,14 @@ window.CalculatradeModules.auth = {
   loadData() {
     if (!db.isLoggedIn()) return;
     const criteria = db.getCriteria();
-    if (criteria) this.criteria = criteria;
+    this.criteria = criteria || {
+      formula: 'Урон ⋅ Вероятность ⋅ Приоритет',
+      damageMax: 4,
+      probMax: 4,
+      priorityMax: 4,
+      riskAppetite: 12,
+      costPerPoint: 50000
+    };
     this.assets = db.getAssets();
     this.risks = db.getRisks();
     this.measures = db.getMeasures();
@@ -121,6 +128,7 @@ window.CalculatradeModules.auth = {
     const result =
         await db.registerUser(this.authForm.login, this.authForm.password);
     if (result.success) {
+      db.currentUserId = result.userId;
       this.currentUser = {login: this.authForm.login};
       this.isLoggedIn = true;
       this.authModalOpen = false;
