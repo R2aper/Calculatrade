@@ -41,7 +41,6 @@ class SecurityDatabase {
         locateFile: file =>
             `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`
       });
-
       // Проверяем, есть ли сохранённая БД в localStorage
       const savedDb = localStorage.getItem('securityAppDb');
 
@@ -50,6 +49,12 @@ class SecurityDatabase {
         this.db = new SQL.Database(uint8Array);
       } else {
         this.db = new SQL.Database();
+      }
+
+      // SQLite отключает проверку внешних ключей по умолчанию.
+      this.db.run('PRAGMA foreign_keys = ON');
+
+      if (!savedDb) {
         this.createTables();
       }
 
@@ -66,8 +71,8 @@ class SecurityDatabase {
     this.db.run(`
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                login TEXT UNIQUE NOT NULL,
-                password TEXT NOT NULL,
+                login TEXT UNIQUE NOT NULL CHECK (length(trim(login)) > 0),
+                password TEXT NOT NULL CHECK (length(password) > 0),
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         `);
@@ -76,12 +81,17 @@ class SecurityDatabase {
             CREATE TABLE IF NOT EXISTS criteria (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
-                formula TEXT DEFAULT 'damage * probability * priority',
-                damageMax INTEGER DEFAULT 4,
-                probMax INTEGER DEFAULT 4,
-                priorityMax INTEGER DEFAULT 4,
-                riskAppetite INTEGER DEFAULT 12,
-                costPerPoint INTEGER DEFAULT 50000,
+                formula TEXT NOT NULL DEFAULT 'damage * probability * priority'
+                    CHECK (length(trim(formula)) > 0),
+                damageMax INTEGER NOT NULL DEFAULT 4 CHECK (damageMax BETWEEN 1 AND 4),
+                probMax INTEGER NOT NULL DEFAULT 4 CHECK (probMax BETWEEN 1 AND 4),
+                priorityMax INTEGER NOT NULL DEFAULT 4
+                    CHECK (priorityMax BETWEEN 1 AND 4),
+                riskAppetite INTEGER NOT NULL DEFAULT 12
+                    CHECK (riskAppetite BETWEEN 4 AND 32),
+                costPerPoint INTEGER NOT NULL DEFAULT 50000
+                    CHECK (costPerPoint >= 0),
+                UNIQUE (user_id),
                 FOREIGN KEY (user_id) REFERENCES users(id)
             )
         `);
@@ -90,9 +100,9 @@ class SecurityDatabase {
             CREATE TABLE IF NOT EXISTS assets (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
-                name TEXT NOT NULL,
-                value INTEGER NOT NULL,
-                priority INTEGER DEFAULT 3,
+                name TEXT NOT NULL CHECK (length(trim(name)) > 0),
+                value INTEGER NOT NULL CHECK (value >= 0),
+                priority INTEGER NOT NULL DEFAULT 3 CHECK (priority BETWEEN 1 AND 4),
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users(id)
             )
@@ -103,16 +113,19 @@ class SecurityDatabase {
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
                 asset_id INTEGER NOT NULL,
-                threat TEXT NOT NULL,
-                vulnerability TEXT NOT NULL,
-                damage INTEGER DEFAULT 2,
-                probability INTEGER DEFAULT 2,
-                priority INTEGER DEFAULT 3,
-                score INTEGER DEFAULT 0,
-                residualScore INTEGER,
+                threat TEXT NOT NULL CHECK (length(trim(threat)) > 0),
+                vulnerability TEXT NOT NULL CHECK (length(trim(vulnerability)) > 0),
+                damage INTEGER NOT NULL DEFAULT 2 CHECK (damage BETWEEN 1 AND 4),
+                probability INTEGER NOT NULL DEFAULT 2
+                    CHECK (probability BETWEEN 1 AND 4),
+                priority INTEGER NOT NULL DEFAULT 3 CHECK (priority BETWEEN 1 AND 4),
+                score INTEGER NOT NULL DEFAULT 0 CHECK (score >= 0),
+                residualScore INTEGER CHECK (residualScore IS NULL OR residualScore >= 0),
                 measure_id INTEGER,
-                reduceDamage INTEGER DEFAULT 0,
-                reduceProb INTEGER DEFAULT 0,
+                reduceDamage INTEGER NOT NULL DEFAULT 0
+                    CHECK (reduceDamage BETWEEN 0 AND 100),
+                reduceProb INTEGER NOT NULL DEFAULT 0
+                    CHECK (reduceProb BETWEEN 0 AND 100),
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users(id),
                 FOREIGN KEY (asset_id) REFERENCES assets(id),
@@ -124,10 +137,12 @@ class SecurityDatabase {
             CREATE TABLE IF NOT EXISTS measures (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
-                name TEXT NOT NULL,
-                cost INTEGER NOT NULL,
-                reduceDamage INTEGER DEFAULT 40,
-                reduceProb INTEGER DEFAULT 80,
+                name TEXT NOT NULL CHECK (length(trim(name)) > 0),
+                cost INTEGER NOT NULL CHECK (cost >= 0),
+                reduceDamage INTEGER NOT NULL DEFAULT 40
+                    CHECK (reduceDamage BETWEEN 0 AND 100),
+                reduceProb INTEGER NOT NULL DEFAULT 80
+                    CHECK (reduceProb BETWEEN 0 AND 100),
                 linkedRiskId INTEGER,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users(id),
@@ -400,10 +415,21 @@ class SecurityDatabase {
   updateRisk(id, updates) {
     if (!this.currentUserId) return false;
 
+    const allowedFields = new Set([
+      'asset_id', 'threat', 'vulnerability', 'damage', 'probability',
+      'priority', 'score', 'residualScore', 'measure_id', 'reduceDamage',
+      'reduceProb'
+    ]);
+    const updateKeys = Object.keys(updates);
+    if (updateKeys.length === 0 ||
+        updateKeys.some(key => !allowedFields.has(key))) {
+      return false;
+    }
+
     const fields = [];
     const values = [];
 
-    Object.keys(updates).forEach(key => {
+    updateKeys.forEach(key => {
       fields.push(`${key} = ?`);
       values.push(updates[key]);
     });
@@ -472,10 +498,18 @@ class SecurityDatabase {
   updateMeasure(id, updates) {
     if (!this.currentUserId) return false;
 
+    const allowedFields =
+        new Set(['name', 'cost', 'reduceDamage', 'reduceProb', 'linkedRiskId']);
+    const updateKeys = Object.keys(updates);
+    if (updateKeys.length === 0 ||
+        updateKeys.some(key => !allowedFields.has(key))) {
+      return false;
+    }
+
     const fields = [];
     const values = [];
 
-    Object.keys(updates).forEach(key => {
+    updateKeys.forEach(key => {
       fields.push(`${key} = ?`);
       values.push(updates[key]);
     });
