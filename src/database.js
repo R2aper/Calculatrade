@@ -17,19 +17,16 @@ class SecurityDatabase {
         Uint8Array.from(salt.match(/.{1,2}/g).map(byte => parseInt(byte, 16))) :
         crypto.getRandomValues(new Uint8Array(16));
     const hash = await crypto.subtle.deriveBits(
-        {
-          name: 'PBKDF2',
-          salt: saltBytes,
-          iterations: 100000,
-          hash: 'SHA-256'
-        },
+        {name: 'PBKDF2', salt: saltBytes, iterations: 100000, hash: 'SHA-256'},
         passwordKey, 256);
-    const hashHex = Array.from(new Uint8Array(hash), byte =>
-                                  byte.toString(16).padStart(2, '0'))
-                         .join('');
-    const saltHex = Array.from(saltBytes, byte =>
-                                  byte.toString(16).padStart(2, '0'))
-                         .join('');
+    const hashHex = Array
+                        .from(
+                            new Uint8Array(hash),
+                            byte => byte.toString(16).padStart(2, '0'))
+                        .join('');
+    const saltHex =
+        Array.from(saltBytes, byte => byte.toString(16).padStart(2, '0'))
+            .join('');
     return `${saltHex}:${hashHex}`;
   }
 
@@ -42,11 +39,22 @@ class SecurityDatabase {
             `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`
       });
       // Проверяем, есть ли сохранённая БД в localStorage
-      const savedDb = localStorage.getItem('securityAppDb');
+      let savedDb;
+      try {
+        savedDb = localStorage.getItem('securityAppDb');
+      } catch (error) {
+        console.error('❌ Ошибка чтения БД из localStorage:', error);
+        return false;
+      }
 
       if (savedDb) {
-        const uint8Array = new Uint8Array(JSON.parse(savedDb));
-        this.db = new SQL.Database(uint8Array);
+        try {
+          const uint8Array = new Uint8Array(JSON.parse(savedDb));
+          this.db = new SQL.Database(uint8Array);
+        } catch (error) {
+          console.error('❌ Ошибка восстановления БД из localStorage:', error);
+          return false;
+        }
       } else {
         this.db = new SQL.Database();
       }
@@ -156,10 +164,17 @@ class SecurityDatabase {
 
   // Сохранение БД в localStorage
   saveToLocalStorage() {
-    if (this.db) {
+    if (!this.db) return false;
+
+    try {
       const data = this.db.export();
       const arr = Array.from(data);
       localStorage.setItem('securityAppDb', JSON.stringify(arr));
+      return true;
+    } catch (error) {
+      // TODO: Добавить fallback
+      console.error('❌ Ошибка сохранения БД в localStorage:', error);
+      return false;
     }
   }
 
@@ -204,9 +219,8 @@ class SecurityDatabase {
         let passwordHash;
 
         if (separatorIndex >= 0) {
-          passwordHash =
-              await this.hashPassword(
-                  password, storedPassword.slice(0, separatorIndex));
+          passwordHash = await this.hashPassword(
+              password, storedPassword.slice(0, separatorIndex));
         } else if (storedPassword === password) {
           // Однократно переводим пользователей со старого формата хранения.
           passwordHash = await this.hashPassword(password);
@@ -217,17 +231,14 @@ class SecurityDatabase {
         }
 
         const passwordIsValid = separatorIndex >= 0 ?
-            passwordHash === storedPassword : storedPassword === password;
+            passwordHash === storedPassword :
+            storedPassword === password;
         if (!passwordIsValid) {
           return {success: false, error: 'Неверный логин или пароль'};
         }
 
         this.currentUserId = user[0];
-        return {
-          success: true,
-          userId: this.currentUserId,
-          login: user[1]
-        };
+        return {success: true, userId: this.currentUserId, login: user[1]};
       }
       return {success: false, error: 'Неверный логин или пароль'};
     } catch (error) {
