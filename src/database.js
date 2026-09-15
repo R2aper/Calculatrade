@@ -8,6 +8,31 @@ class SecurityDatabase {
     this.currentUserId = null;
   }
 
+  // Хеширование пароля с уникальной солью для каждого пользователя
+  async hashPassword(password, salt = null) {
+    const passwordBytes = new TextEncoder().encode(password);
+    const passwordKey = await crypto.subtle.importKey(
+        'raw', passwordBytes, {name: 'PBKDF2'}, false, ['deriveBits']);
+    const saltBytes = salt ?
+        Uint8Array.from(salt.match(/.{1,2}/g).map(byte => parseInt(byte, 16))) :
+        crypto.getRandomValues(new Uint8Array(16));
+    const hash = await crypto.subtle.deriveBits(
+        {
+          name: 'PBKDF2',
+          salt: saltBytes,
+          iterations: 100000,
+          hash: 'SHA-256'
+        },
+        passwordKey, 256);
+    const hashHex = Array.from(new Uint8Array(hash), byte =>
+                                  byte.toString(16).padStart(2, '0'))
+                         .join('');
+    const saltHex = Array.from(saltBytes, byte =>
+                                  byte.toString(16).padStart(2, '0'))
+                         .join('');
+    return `${saltHex}:${hashHex}`;
+  }
+
   // Инициализация базы данных
   async init() {
     try {
@@ -124,11 +149,12 @@ class SecurityDatabase {
   }
 
   // Регистрация пользователя
-  registerUser(login, password) {
+  async registerUser(login, password) {
     try {
+      const passwordHash = await this.hashPassword(password);
       this.db.run(
           'INSERT INTO users (login, password) VALUES (?, ?)',
-          [login, password]);
+          [login, passwordHash]);
 
       const result = this.db.exec('SELECT last_insert_rowid()');
       const userId = result[0].values[0][0];
@@ -151,18 +177,41 @@ class SecurityDatabase {
   }
 
   // Авторизация пользователя
-  loginUser(login, password) {
+  async loginUser(login, password) {
     try {
       const result = this.db.exec(
-          'SELECT id, login FROM users WHERE login = ? AND password = ?',
-          [login, password]);
+          'SELECT id, login, password FROM users WHERE login = ?', [login]);
 
       if (result.length > 0 && result[0].values.length > 0) {
-        this.currentUserId = result[0].values[0][0];
+        const user = result[0].values[0];
+        const storedPassword = user[2];
+        const separatorIndex = storedPassword.indexOf(':');
+        let passwordHash;
+
+        if (separatorIndex >= 0) {
+          passwordHash =
+              await this.hashPassword(
+                  password, storedPassword.slice(0, separatorIndex));
+        } else if (storedPassword === password) {
+          // Однократно переводим пользователей со старого формата хранения.
+          passwordHash = await this.hashPassword(password);
+          this.db.run(
+              'UPDATE users SET password = ? WHERE id = ?',
+              [passwordHash, user[0]]);
+          this.saveToLocalStorage();
+        }
+
+        const passwordIsValid = separatorIndex >= 0 ?
+            passwordHash === storedPassword : storedPassword === password;
+        if (!passwordIsValid) {
+          return {success: false, error: 'Неверный логин или пароль'};
+        }
+
+        this.currentUserId = user[0];
         return {
           success: true,
           userId: this.currentUserId,
-          login: result[0].values[0][1]
+          login: user[1]
         };
       }
       return {success: false, error: 'Неверный логин или пароль'};

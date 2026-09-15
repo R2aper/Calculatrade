@@ -12,9 +12,9 @@ window.CalculatradeModules.auth = {
       return;
     }
 
-    const demoResult = db.registerUser('demo', 'demo');
+    const demoResult = await db.registerUser('demo', 'demo');
     if (demoResult.success) {
-      const loginResult = db.loginUser('demo', 'demo');
+      const loginResult = await db.loginUser('demo', 'demo');
       if (loginResult.success) {
         const asset1 =
             db.addAsset({name: 'База ПДн', value: 2500000, priority: 4});
@@ -83,12 +83,13 @@ window.CalculatradeModules.auth = {
     this.authForm = {login: '', password: ''};
   },
 
-  submitLogin() {
+  async submitLogin() {
     if (!this.authForm.login || !this.authForm.password) {
       this.showNotification('❌ Введите логин и пароль', 'error');
       return;
     }
-    const result = db.loginUser(this.authForm.login, this.authForm.password);
+    const result =
+        await db.loginUser(this.authForm.login, this.authForm.password);
     if (result.success) {
       this.currentUser = {
         name: result.login.split('@')[0] || 'Пользователь',
@@ -107,7 +108,7 @@ window.CalculatradeModules.auth = {
     }
   },
 
-  submitRegister() {
+  async submitRegister() {
     if (!this.authForm.login || !this.authForm.password) {
       this.showNotification('❌ Заполните все поля', 'error');
       return;
@@ -117,7 +118,8 @@ window.CalculatradeModules.auth = {
           '❌ Пароль должен быть не менее 4 символов', 'error');
       return;
     }
-    const result = db.registerUser(this.authForm.login, this.authForm.password);
+    const result =
+        await db.registerUser(this.authForm.login, this.authForm.password);
     if (result.success) {
       this.currentUser = {login: this.authForm.login};
       this.isLoggedIn = true;
