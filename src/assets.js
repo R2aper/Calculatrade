@@ -4,7 +4,7 @@
 
 window.CalculatradeModules = window.CalculatradeModules || {};
 
-window.CalculatrbadeModules.assets = {
+window.CalculatradeModules.assets = {
   openAddAssetModal() {
     this.assetForm = {name: '', value: '', priority: 3};
     this.addAssetModalOpen = true;
