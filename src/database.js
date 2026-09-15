@@ -1,4 +1,6 @@
-// ====================== БАЗА ДАННЫХ (SQL.JS) ======================
+/*
+  База данных sql.js
+*/
 
 class SecurityDatabase {
   constructor() {
