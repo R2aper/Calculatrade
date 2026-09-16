@@ -2,6 +2,10 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import authRouter from './routes/auth.js';
+import criteriaRouter from './routes/criteria.js';
+import assetsRouter from './routes/assets.js';
+import risksRouter from './routes/risks.js';
+import measuresRouter from './routes/measures.js';
 import { authenticate } from './middleware/auth.js';
 import { prisma } from './db.js';
 
@@ -35,6 +39,10 @@ app.get('/api', (req, res) => {
 });
 
 app.use('/api/auth', authRouter);
+app.use('/api/criteria', criteriaRouter);
+app.use('/api/assets', assetsRouter);
+app.use('/api/risks', risksRouter);
+app.use('/api/measures', measuresRouter);
 
 app.get('/api/profile', authenticate, async (req, res) => {
   const user = await prisma.user.findUnique({
