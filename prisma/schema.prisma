@@ -1,0 +1,83 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  login        String    @unique
+  passwordHash String    @map("password_hash")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  criteria     Criteria?
+  assets       Asset[]
+  risks        Risk[]
+  measures     Measure[]
+
+  @@map("users")
+}
+
+model Criteria {
+  id           String @id @default(cuid())
+  userId       String @unique @map("user_id")
+  formula      String
+  damageMax    Int    @map("damage_max")
+  probMax      Int    @map("prob_max")
+  priorityMax  Int    @map("priority_max")
+  riskAppetite Int    @map("risk_appetite")
+  costPerPoint Int    @map("cost_per_point")
+  user         User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("criteria")
+}
+
+model Asset {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  name      String
+  value     Float
+  priority  Int
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  risks     Risk[]
+
+  @@map("assets")
+}
+
+model Risk {
+  id            String   @id @default(cuid())
+  userId        String   @map("user_id")
+  assetId       String   @map("asset_id")
+  threat        String
+  vulnerability String
+  damage        Float
+  probability   Float
+  priority      Float
+  score         Float
+  residualScore Float?   @map("residual_score")
+  measureId     String?  @map("measure_id")
+  reduceDamage  Int?     @map("reduce_damage")
+  reduceProb    Int?     @map("reduce_prob")
+  createdAt     DateTime @default(now()) @map("created_at")
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  asset         Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@map("risks")
+}
+
+model Measure {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  name         String
+  cost         Float
+  reduceDamage Int      @map("reduce_damage")
+  reduceProb   Int      @map("reduce_prob")
+  linkedRiskId String?  @unique @map("linked_risk_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("measures")
+}

@@ -1,6 +1,9 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import authRouter from './routes/auth.js';
+import { authenticate } from './middleware/auth.js';
+import { prisma } from './db.js';
 
 dotenv.config();
 
@@ -31,11 +34,26 @@ app.get('/api', (req, res) => {
   });
 });
 
-app.use('/api/auth', (req, res) => {
-  res.status(501).json({
-    error: 'Auth endpoints are not implemented yet.',
-    message: 'Stage 2 will add register/login/JWT flow.',
+app.use('/api/auth', authRouter);
+
+app.get('/api/profile', authenticate, async (req, res) => {
+  const user = await prisma.user.findUnique({
+    where: { id: req.user.userId },
+    select: {
+      id: true,
+      login: true,
+      createdAt: true,
+    },
   });
+
+  if (!user) {
+    return res.status(404).json({
+      error: 'Not Found',
+      message: 'Пользователь не найден.',
+    });
+  }
+
+  return res.json({ user });
 });
 
 app.use((req, res) => {
