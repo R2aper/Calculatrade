@@ -8,61 +8,56 @@ window.CalculatradeModules.auth = {
   async init() {
     this.dbInitialized = await db.init();
     if (!this.dbInitialized) {
-      this.showNotification('❌ Ошибка инициализации базы данных', 'error');
+      this.showNotification('❌ Ошибка инициализации API', 'error');
       return;
-    }
-
-    const demoResult = await db.registerUser('demo', 'demo');
-    if (demoResult.success) {
-      const loginResult = await db.loginUser('demo', 'demo');
-      if (loginResult.success) {
-        const asset1 =
-            db.addAsset({name: 'База ПДн', value: 2500000, priority: 4});
-        const asset2 =
-            db.addAsset({name: 'Сервер 1С', value: 1200000, priority: 3});
-        const measure1 = db.addMeasure({
-          name: 'Многофакторная аутентификация',
-          cost: 380000,
-          reduceDamage: 30,
-          reduceProb: 90
-        });
-        const risk1 = db.addRisk({
-          threat: 'Несанкционированный доступ',
-          vulnerability: 'Слабый пароль',
-          assetId: asset1.id,
-          damage: 4,
-          probability: 3,
-          priority: 4,
-          score: 48
-        });
-        db.updateRisk(risk1.id, {
-          measure_id: measure1.id,
-          reduceDamage: 30,
-          reduceProb: 90,
-          residualScore: 8
-        });
-        db.updateMeasure(measure1.id, {linkedRiskId: risk1.id});
-        db.logout();
-      }
     }
 
     const savedSession = localStorage.getItem('securityAppSession');
     if (savedSession) {
-      const session = JSON.parse(savedSession);
-      if (session.userId) {
-        db.currentUserId = session.userId;
-        this.isLoggedIn = true;
-        this.currentUser = {login: session.login};
-        this.loadData();
-        this.showNotification(
-            `✅ Сессия восстановлена, ${this.currentUser.login}!`, 'success');
+      try {
+        const session = JSON.parse(savedSession);
+        if (session.userId) {
+          db.currentUserId = session.userId;
+          this.isLoggedIn = true;
+          this.currentUser = {login: session.login || ''};
+          await this.loadData();
+          this.showNotification(
+              `✅ Сессия восстановлена, ${this.currentUser.login}!`, 'success');
+        }
+      } catch (error) {
+        console.warn('⚠️ Session parse failed', error);
       }
+    }
+
+    if (!this.isLoggedIn) {
+      await this.loadData();
     }
   },
 
-  loadData() {
-    if (!db.isLoggedIn()) return;
-    const criteria = db.getCriteria();
+  async loadData() {
+    if (!db.isLoggedIn()) {
+      this.criteria = {
+        formula: 'Урон ⋅ Вероятность ⋅ Приоритет',
+        damageMax: 4,
+        probMax: 4,
+        priorityMax: 4,
+        riskAppetite: 12,
+        costPerPoint: 50000
+      };
+      this.assets = [];
+      this.risks = [];
+      this.measures = [];
+      this.isLoggedIn = false;
+      return;
+    }
+
+    const [criteria, assets, risks, measures] = await Promise.all([
+      db.getCriteria(),
+      db.getAssets(),
+      db.getRisks(),
+      db.getMeasures(),
+    ]);
+
     this.criteria = criteria || {
       formula: 'Урон ⋅ Вероятность ⋅ Приоритет',
       damageMax: 4,
@@ -71,10 +66,14 @@ window.CalculatradeModules.auth = {
       riskAppetite: 12,
       costPerPoint: 50000
     };
-    this.assets = db.getAssets();
-    this.risks = db.getRisks();
-    this.measures = db.getMeasures();
-    console.log('✅ Данные загружены из БД');
+    this.assets = assets || [];
+    this.risks = risks || [];
+    this.measures = measures || [];
+    this.isLoggedIn = true;
+    if (this.currentUser?.login) {
+      this.currentUser = {login: this.currentUser.login};
+    }
+    console.log('✅ Данные загружены из API');
   },
 
   toggleAuthModal() {
@@ -95,6 +94,7 @@ window.CalculatradeModules.auth = {
       this.showNotification('❌ Введите логин и пароль', 'error');
       return;
     }
+
     const result =
         await db.loginUser(this.authForm.login, this.authForm.password);
     if (result.success) {
@@ -107,7 +107,7 @@ window.CalculatradeModules.auth = {
       localStorage.setItem(
           'securityAppSession',
           JSON.stringify({userId: result.userId, login: result.login}));
-      this.loadData();
+      await this.loadData();
       this.showNotification(
           `✅ Добро пожаловать, ${this.currentUser.name}!`, 'success');
     } else {
@@ -125,6 +125,7 @@ window.CalculatradeModules.auth = {
           '❌ Пароль должен быть не менее 4 символов', 'error');
       return;
     }
+
     const result =
         await db.registerUser(this.authForm.login, this.authForm.password);
     if (result.success) {
@@ -135,7 +136,7 @@ window.CalculatradeModules.auth = {
       localStorage.setItem(
           'securityAppSession',
           JSON.stringify({userId: result.userId, login: this.authForm.login}));
-      this.loadData();
+      await this.loadData();
       this.showNotification(
           `✅ Профиль "${this.currentUser.login}" создан и выполнен вход`,
           'success');
@@ -144,9 +145,9 @@ window.CalculatradeModules.auth = {
     }
   },
 
-  logout() {
+  async logout() {
     if (!confirm('Выйти из аккаунта?')) return;
-    db.logout();
+    await db.logout();
     this.isLoggedIn = false;
     this.currentUser = {login: ''};
     localStorage.removeItem('securityAppSession');

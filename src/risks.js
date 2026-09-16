@@ -31,7 +31,7 @@ window.CalculatradeModules.risks = {
     };
   },
 
-  submitRisk() {
+  async submitRisk() {
     if (!this.riskForm.threat.trim()) {
       this.showNotification('❌ Введите описание угрозы', 'error');
       return;
@@ -51,7 +51,7 @@ window.CalculatradeModules.risks = {
     }
     const score = this.calculateRisk(
         this.riskForm.damage, this.riskForm.probability, asset.priority);
-    const risk = db.addRisk({
+    const risk = await db.addRisk({
       threat: this.riskForm.threat,
       vulnerability: this.riskForm.vulnerability,
       assetId: asset.id,
@@ -72,14 +72,14 @@ window.CalculatradeModules.risks = {
     }
   },
 
-  updateRiskField(riskId, field, value) {
+  async updateRiskField(riskId, field, value) {
     const risk = this.risks.find(r => r.id === riskId);
     if (!risk) return;
-    db.updateRisk(riskId, {[field]: value});
+    await db.updateRisk(riskId, {[field]: value});
     this.showNotification('✅ Риск обновлен', 'success');
   },
 
-  recalculateRiskScore(risk) {
+  async recalculateRiskScore(risk) {
     const asset = this.assets.find(a => a.id === risk.assetId);
     if (!asset) return;
     risk.score =
@@ -91,7 +91,7 @@ window.CalculatradeModules.risks = {
             risk, measure.reduceDamage, measure.reduceProb);
       }
     }
-    db.updateRisk(risk.id, {
+    await db.updateRisk(risk.id, {
       damage: risk.damage,
       probability: risk.probability,
       score: risk.score,
@@ -100,8 +100,8 @@ window.CalculatradeModules.risks = {
     this.showNotification('✅ Параметры риска обновлены', 'success');
   },
 
-  deleteRisk(id) {
-    db.deleteRisk(id);
+  async deleteRisk(id) {
+    await db.deleteRisk(id);
     this.risks = this.risks.filter(r => r.id !== id);
     this.showNotification('✅ Риск удалён', 'success');
   }

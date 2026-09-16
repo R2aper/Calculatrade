@@ -24,8 +24,8 @@ window.CalculatradeModules.ui = {
     if (this.notificationTimeout) clearTimeout(this.notificationTimeout);
   },
 
-  saveCriteria() {
-    const saved = db.saveCriteria(this.criteria);
+  async saveCriteria() {
+    const saved = await db.saveCriteria(this.criteria);
     this.showNotification(
         saved ? '✅ Критерии сохранены!' : '❌ Ошибка сохранения критериев',
         saved ? 'success' : 'error');
