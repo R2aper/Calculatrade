@@ -6,7 +6,7 @@ export default defineConfig({
     port: 5173,
   },
   build: {
-    outDir: 'client/dist',
+    outDir: 'dist',
     emptyOutDir: true,
   },
 });
