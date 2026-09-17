@@ -92,3 +92,24 @@ Frontend обновлён на основе UX/UI V8: новая главная 
 
 Для запуска используйте `npm run dev:server` и `npm run dev:client`.
 
+## Развертывание на VPS через Docker
+
+Нужен VPS с Linux, Docker Engine и Docker Compose plugin. После клонирования репозитория:
+
+```bash
+cp .env.production.example .env.production
+ nano .env.production
+chmod +x deploy.sh
+./deploy.sh
+```
+
+Скрипт собирает frontend и API, запускает PostgreSQL с persistent volume, применяет Prisma schema и поднимает Nginx на порту `APP_PORT` (по умолчанию `80`). Frontend обращается к API через тот же домен (`/api`), поэтому отдельная настройка `VITE_API_BASE_URL` не требуется.
+
+Для обновления после `git pull` повторите `./deploy.sh`. Логи и состояние:
+
+```bash
+docker compose --env-file .env.production -f docker-compose.prod.yml logs -f
+docker compose --env-file .env.production -f docker-compose.prod.yml ps
+```
+
+Перед публикацией домена замените `CLIENT_URL` на `https://ваш-домен`, настройте HTTPS через reverse proxy/брандмауэр VPS и используйте длинные случайные значения для `POSTGRES_PASSWORD` и `JWT_SECRET`.

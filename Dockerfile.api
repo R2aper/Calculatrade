@@ -1,0 +1,21 @@
+FROM node:20-bookworm-slim
+
+WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends openssl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY package.json package-lock.json ./
+COPY server/package.json server/package.json
+RUN npm ci
+
+COPY prisma ./prisma
+COPY server ./server
+RUN npm --workspace server run db:generate
+
+WORKDIR /app/server
+ENV NODE_ENV=production
+EXPOSE 4000
+
+CMD ["sh", "-c", "npx prisma db push --schema ../prisma/schema.prisma && npm start"]

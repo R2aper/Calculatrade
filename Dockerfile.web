@@ -1,0 +1,18 @@
+FROM node:20-bookworm-slim AS build
+
+WORKDIR /app
+ARG VITE_API_BASE_URL=/api
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+COPY package.json package-lock.json ./
+COPY client/package.json client/package.json
+RUN npm ci
+
+COPY client ./client
+COPY index.html styles.css ./
+COPY src ./src
+RUN npm --workspace client run build
+
+FROM nginx:1.27-alpine
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/dist /usr/share/nginx/html
+EXPOSE 80
