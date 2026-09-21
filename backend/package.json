@@ -1,0 +1,21 @@
+{
+  "name": "calculatrade-backend",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "build": "node --check src/server.js && node --check src/app.js && node --check src/migrate.js",
+    "test": "node --test",
+    "db:migrate": "node src/migrate.js",
+    "db:rollback": "node src/migrate.js rollback"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^9.3.1",
+    "@fastify/cors": "^9.0.1",
+    "argon2": "^0.31.2",
+    "dotenv": "^16.4.5",
+    "fastify": "^4.28.1",
+    "pg": "^8.12.0"
+  }
+}
