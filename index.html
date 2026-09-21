@@ -42,7 +42,7 @@
                             <span x-text="`${currentUser.login}`" style="color: var(--text-primary); font-weight: 500;"></span>
                         </div>
                     </template>
-                    <button @click="toggleAuthModal()" class="btn btn-secondary" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem;">
+                    <button @click="isLoggedIn ? logout() : toggleAuthModal()" class="btn btn-secondary" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem;">
                     👤 <span x-text="isLoggedIn ? 'Выход' : 'Вход'"></span>
                 </button>
 

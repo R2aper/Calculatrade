@@ -13,10 +13,14 @@ class SecurityDatabase {
   }
 
   async request(path, options = {}) {
+    const headers = {...(options.headers || {})};
+    if (options.body !== undefined && !headers['Content-Type']) {
+      headers['Content-Type'] = 'application/json';
+    }
     const response = await fetch(`${this.apiBase}${path}`, {
       ...options,
       credentials: 'include',
-      headers: {'Content-Type': 'application/json', ...(options.headers || {})}
+      headers
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {

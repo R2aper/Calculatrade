@@ -102,12 +102,16 @@ window.CalculatradeModules.auth = {
 
   async logout() {
     if (!confirm('Выйти из аккаунта?')) return;
-    await db.logout();
-    this.isLoggedIn = false;
-    this.currentUser = {login: ''};
-    this.assets = [];
-    this.risks = [];
-    this.measures = [];
-    this.showNotification('👋 Вы вышли из аккаунта', 'info');
+    try {
+      await db.logout();
+      this.isLoggedIn = false;
+      this.currentUser = {login: ''};
+      this.assets = [];
+      this.risks = [];
+      this.measures = [];
+      this.showNotification('👋 Вы вышли из аккаунта', 'info');
+    } catch (error) {
+      this.showNotification(`❌ Не удалось выйти: ${error.message}`, 'error');
+    }
   }
 };
