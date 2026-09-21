@@ -35,5 +35,6 @@ window.CalculatradeModules.createState = () => ({
       {threat: '', vulnerability: '', assetId: null, damage: 2, probability: 2},
   measureForm: {name: '', cost: '', reduceDamage: 40, reduceProb: 80},
   notification: {show: false, message: '', type: 'success'},
+  loading: false,
   notificationTimeout: null
 });

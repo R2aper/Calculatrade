@@ -15,7 +15,7 @@ window.CalculatradeModules.assets = {
     this.assetForm = {name: '', value: '', priority: 3};
   },
 
-  submitAsset() {
+  async submitAsset() {
     if (!this.assetForm.name.trim()) {
       this.showNotification('❌ Введите название актива', 'error');
       return;
@@ -29,7 +29,7 @@ window.CalculatradeModules.assets = {
       return;
     }
 
-    const asset = db.addAsset({
+    const asset = await db.addAsset({
       name: this.assetForm.name,
       value: parseInt(this.assetForm.value),
       priority: parseInt(this.assetForm.priority)
@@ -43,7 +43,7 @@ window.CalculatradeModules.assets = {
     }
   },
 
-  updateAssetPriority(assetId, newPriority) {
+  async updateAssetPriority(assetId, newPriority) {
     if (newPriority < 1 || newPriority > 4) {
       console.error('Приоритет должен быть от 1 до 4');
       return;
@@ -52,11 +52,11 @@ window.CalculatradeModules.assets = {
     const asset = this.assets.find(a => a.id === assetId);
     if (!asset) return;
 
-    db.updateAsset(assetId, {priority: newPriority});
+    await db.updateAsset(assetId, {priority: newPriority});
     asset.priority = newPriority;
 
     const linkedRisks = this.risks.filter(r => r.assetId === assetId);
-    linkedRisks.forEach(r => {
+    for (const r of linkedRisks) {
       r.priority = newPriority;
       r.score = this.calculateRisk(r.damage, r.probability, r.priority);
 
@@ -64,18 +64,18 @@ window.CalculatradeModules.assets = {
         r.residualScore =
             this.calculateResidualRisk(r, r.reduceDamage, r.reduceProb);
       }
-      db.updateRisk(r.id, {
+      await db.updateRisk(r.id, {
         priority: r.priority,
         score: r.score,
         residualScore: r.residualScore
       });
-    });
+    }
 
     this.showNotification(
         `✅ Приоритет актива "${asset.name}" обновлён`, 'success');
   },
 
-  updateAsset(assetId, updates) {
+  async updateAsset(assetId, updates) {
     const asset = this.assets.find(a => a.id === assetId);
     if (!asset) return;
 
@@ -83,12 +83,12 @@ window.CalculatradeModules.assets = {
     Object.assign(asset, updates);
 
     // Сохраняем в БД
-    db.updateAsset(assetId, updates);
+    await db.updateAsset(assetId, updates);
 
     this.showNotification('✅ Актив обновлен', 'success');
   },
 
-  deleteAsset(id) {
+  async deleteAsset(id) {
     const asset = this.assets.find(a => a.id === id);
     const linkedRisks = this.risks.filter(r => r.assetId === id);
 
@@ -99,7 +99,7 @@ window.CalculatradeModules.assets = {
       if (!confirm_delete) return;
     }
 
-    db.deleteAsset(id);
+    await db.deleteAsset(id);
     this.assets = this.assets.filter(a => a.id !== id);
     this.risks = this.risks.filter(r => r.assetId !== id);
 

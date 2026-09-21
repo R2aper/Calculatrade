@@ -15,7 +15,7 @@ window.CalculatradeModules.measures = {
     this.measureForm = {name: '', cost: '', reduceDamage: 40, reduceProb: 80};
   },
 
-  submitMeasure() {
+  async submitMeasure() {
     if (!this.measureForm.name.trim()) {
       this.showNotification('❌ Введите название защитной меры', 'error');
       return;
@@ -34,7 +34,7 @@ window.CalculatradeModules.measures = {
           '❌ Снижение вероятности должно быть 0-100%', 'error');
       return;
     }
-    const measure = db.addMeasure({
+    const measure = await db.addMeasure({
       name: this.measureForm.name,
       cost: parseInt(this.measureForm.cost),
       reduceDamage: parseInt(this.measureForm.reduceDamage),
@@ -48,11 +48,11 @@ window.CalculatradeModules.measures = {
     }
   },
 
-  updateMeasureField(measureId, field, value) {
+  async updateMeasureField(measureId, field, value) {
     const measure = this.measures.find(m => m.id === measureId);
     if (!measure) return;
     Object.assign(measure, {[field]: value});
-    db.updateMeasure(measureId, {[field]: value});
+    await db.updateMeasure(measureId, {[field]: value});
     if ((field === 'reduceDamage' || field === 'reduceProb') &&
         measure.linkedRiskId) {
       const risk = this.risks.find(r => r.id === measure.linkedRiskId);
@@ -61,7 +61,7 @@ window.CalculatradeModules.measures = {
         risk.reduceProb = measure.reduceProb;
         risk.residualScore = this.calculateResidualRisk(
             risk, measure.reduceDamage, measure.reduceProb);
-        db.updateRisk(risk.id, {
+        await db.updateRisk(risk.id, {
           reduceDamage: risk.reduceDamage,
           reduceProb: risk.reduceProb,
           residualScore: risk.residualScore
@@ -71,23 +71,23 @@ window.CalculatradeModules.measures = {
     this.showNotification('✅ Мера обновлена', 'success');
   },
 
-  deleteMeasure(id) {
-    db.deleteMeasure(id);
+  async deleteMeasure(id) {
+    await db.deleteMeasure(id);
     this.measures = this.measures.filter(m => m.id !== id);
-    this.risks.forEach(r => {
+    for (const r of this.risks) {
       if (r.measureId === id) {
         r.measureId = null;
         r.reduceDamage = 0;
         r.reduceProb = 0;
         r.residualScore = null;
-        db.updateRisk(r.id, {
+        await db.updateRisk(r.id, {
           measure_id: null,
           reduceDamage: 0,
           reduceProb: 0,
           residualScore: null
         });
       }
-    });
+    }
     this.showNotification('✅ Мера удалена', 'success');
   },
 
@@ -111,22 +111,22 @@ window.CalculatradeModules.measures = {
     this.currentMeasureIdForLinking = null;
   },
 
-  linkRiskToMeasure(risk, measure) {
+  async linkRiskToMeasure(risk, measure) {
     risk.measureId = measure.id;
     risk.reduceDamage = measure.reduceDamage;
     risk.reduceProb = measure.reduceProb;
     risk.residualScore = this.calculateResidualRisk(
         risk, measure.reduceDamage, measure.reduceProb);
-    db.updateRisk(risk.id, {
+    await db.updateRisk(risk.id, {
       measure_id: risk.measureId,
       reduceDamage: risk.reduceDamage,
       reduceProb: risk.reduceProb,
       residualScore: risk.residualScore
     });
-    db.updateMeasure(measure.id, {linkedRiskId: risk.id});
+    await db.updateMeasure(measure.id, {linkedRiskId: risk.id});
   },
 
-  confirmLinkMeasure() {
+  async confirmLinkMeasure() {
     const riskId = document.getElementById('riskSelect').value;
     if (!riskId) {
       this.showNotification('❌ Выберите риск!', 'error');
@@ -143,13 +143,13 @@ window.CalculatradeModules.measures = {
       this.showNotification('❌ Мера не найдена', 'error');
       return;
     }
-    this.linkRiskToMeasure(risk, measure);
+    await this.linkRiskToMeasure(risk, measure);
     this.closeLinkMeasureModal();
     this.showNotification(
         `✅ Мера привязана к риску "${risk.threat}"`, 'success');
   },
 
-  confirmLinkMeasureRisk() {
+  async confirmLinkMeasureRisk() {
     const riskId = document.getElementById('riskSelectForMeasure').value;
     if (!riskId) {
       this.showNotification('❌ Выберите риск!', 'error');
@@ -168,27 +168,27 @@ window.CalculatradeModules.measures = {
     }
     if (risk.measureId && risk.measureId !== measure.id) {
       const oldMeasure = this.measures.find(m => m.id === risk.measureId);
-      if (oldMeasure) db.updateMeasure(oldMeasure.id, {linkedRiskId: null});
+      if (oldMeasure) await db.updateMeasure(oldMeasure.id, {linkedRiskId: null});
     }
     if (measure.linkedRiskId && measure.linkedRiskId !== risk.id) {
       const oldRisk = this.risks.find(r => r.id === measure.linkedRiskId);
-      if (oldRisk) this.unlinkRisk(oldRisk, false);
+      if (oldRisk) await this.unlinkRisk(oldRisk, false);
     }
-    this.linkRiskToMeasure(risk, measure);
+    await this.linkRiskToMeasure(risk, measure);
     this.closeLinkMeasureRiskModal();
     this.showNotification(
         `✅ Мера "${measure.name}" перепривязана к риску "${risk.threat}"`,
         'success');
   },
 
-  unlinkRisk(risk, notify = true) {
+  async unlinkRisk(risk, notify = true) {
     const measure = this.measures.find(m => m.id === risk.measureId);
-    if (measure) db.updateMeasure(measure.id, {linkedRiskId: null});
+    if (measure) await db.updateMeasure(measure.id, {linkedRiskId: null});
     risk.measureId = null;
     risk.reduceDamage = 0;
     risk.reduceProb = 0;
     risk.residualScore = null;
-    db.updateRisk(risk.id, {
+    await db.updateRisk(risk.id, {
       measure_id: null,
       reduceDamage: 0,
       reduceProb: 0,
@@ -200,9 +200,9 @@ window.CalculatradeModules.measures = {
     }
   },
 
-  unlinkMeasureFromRisk(riskId) {
+  async unlinkMeasureFromRisk(riskId) {
     const risk = this.risks.find(r => r.id === riskId);
-    if (risk) this.unlinkRisk(risk);
+    if (risk) await this.unlinkRisk(risk);
   },
 
   getAvailableRisksForLinking() {

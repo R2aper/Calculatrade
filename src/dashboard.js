@@ -85,9 +85,9 @@ window.CalculatradeModules.dashboard = {
         this.economicTotalCost;
   },
 
-  resetAll() {
+  async resetAll() {
     if (!confirm('Сбросить ВСЕ данные текущего пользователя?')) return;
-    db.resetUserData();
+    await db.resetUserData();
     this.assets = [];
     this.risks = [];
     this.measures = [];
