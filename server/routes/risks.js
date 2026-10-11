@@ -6,6 +6,13 @@ const router = express.Router();
 
 router.use(authenticate);
 
+const parseNullableNumber = (val, fallback = null) => {
+  if (val === undefined) return fallback;
+  if (val === null || val === '') return null;
+  const num = Number(val);
+  return Number.isNaN(num) ? fallback : num;
+};
+
 router.get('/', async (req, res) => {
   const risks = await prisma.risk.findMany({
     where: { userId: req.user.userId },
@@ -38,10 +45,10 @@ router.post('/', async (req, res) => {
       probability: Number(req.body?.probability ?? 0),
       priority: Number(req.body?.priority ?? 0),
       score: Number(req.body?.score ?? 0),
-      residualScore: req.body?.residualScore === undefined ? null : Number(req.body.residualScore),
+      residualScore: parseNullableNumber(req.body?.residualScore, null),
       measureId: req.body?.measureId || null,
-      reduceDamage: req.body?.reduceDamage === undefined ? null : Number(req.body.reduceDamage),
-      reduceProb: req.body?.reduceProb === undefined ? null : Number(req.body.reduceProb),
+      reduceDamage: parseNullableNumber(req.body?.reduceDamage, null),
+      reduceProb: parseNullableNumber(req.body?.reduceProb, null),
     },
   });
 
@@ -66,10 +73,10 @@ router.put('/:id', async (req, res) => {
       probability: Number(req.body?.probability ?? existingRisk.probability),
       priority: Number(req.body?.priority ?? existingRisk.priority),
       score: Number(req.body?.score ?? existingRisk.score),
-      residualScore: req.body?.residualScore === undefined ? existingRisk.residualScore : Number(req.body.residualScore),
+      residualScore: req.body?.residualScore === undefined ? existingRisk.residualScore : parseNullableNumber(req.body.residualScore, null),
       measureId: req.body?.measureId === undefined ? existingRisk.measureId : req.body.measureId || null,
-      reduceDamage: req.body?.reduceDamage === undefined ? existingRisk.reduceDamage : Number(req.body.reduceDamage),
-      reduceProb: req.body?.reduceProb === undefined ? existingRisk.reduceProb : Number(req.body.reduceProb),
+      reduceDamage: req.body?.reduceDamage === undefined ? existingRisk.reduceDamage : parseNullableNumber(req.body.reduceDamage, null),
+      reduceProb: req.body?.reduceProb === undefined ? existingRisk.reduceProb : parseNullableNumber(req.body.reduceProb, null),
     },
   });
 
@@ -84,6 +91,11 @@ router.delete('/:id', async (req, res) => {
   if (!risk) {
     return res.status(404).json({ error: 'Not Found', message: 'Риск не найден.' });
   }
+
+  await prisma.measure.updateMany({
+    where: { userId: req.user.userId, linkedRiskId: req.params.id },
+    data: { linkedRiskId: null },
+  });
 
   await prisma.risk.delete({
     where: { id: req.params.id },

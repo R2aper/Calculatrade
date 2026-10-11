@@ -1,6 +1,6 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import authRouter from './routes/auth.js';
 import criteriaRouter from './routes/criteria.js';
 import assetsRouter from './routes/assets.js';
@@ -8,8 +8,6 @@ import risksRouter from './routes/risks.js';
 import measuresRouter from './routes/measures.js';
 import { authenticate } from './middleware/auth.js';
 import { prisma } from './db.js';
-
-dotenv.config();
 
 const app = express();
 const PORT = Number(process.env.PORT || 4000);

@@ -5,22 +5,28 @@
 class SecurityDatabase {
   constructor() {
     this.currentUserId = null;
-    this.baseUrl = window.__API_BASE_URL__ || 'http://localhost:4000/api';
+    const envUrl = typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL;
+    this.baseUrl = window.__API_BASE_URL__ || envUrl || 'http://localhost:4000/api';
   }
 
   decodeToken(token) {
-    const payload = token.split('.')[1];
-    if (!payload) return null;
+    if (!token || typeof token !== 'string') return null;
+    try {
+      const payload = token.split('.')[1];
+      if (!payload) return null;
 
-    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
-    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
-    const binary = atob(padded);
-    const decoded = decodeURIComponent(
-        Array.from(binary).map(
-            char => `%${char.charCodeAt(0).toString(16).padStart(2, '0')}`)
-          .join(''));
+      const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+      const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+      const binary = atob(padded);
+      const decoded = decodeURIComponent(
+          Array.from(binary).map(
+              char => `%${char.charCodeAt(0).toString(16).padStart(2, '0')}`)
+            .join(''));
 
-    return JSON.parse(decoded);
+      return JSON.parse(decoded);
+    } catch (e) {
+      return null;
+    }
   }
 
   async request(path, options = {}) {
@@ -34,13 +40,18 @@ class SecurityDatabase {
       headers.Authorization = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${this.baseUrl}${path}`, {
-      ...options,
-      headers,
-      body: options.body && typeof options.body !== 'string' ?
-          JSON.stringify(options.body) :
-          options.body,
-    });
+    let response;
+    try {
+      response = await fetch(`${this.baseUrl}${path}`, {
+        ...options,
+        headers,
+        body: options.body && typeof options.body !== 'string' ?
+            JSON.stringify(options.body) :
+            options.body,
+      });
+    } catch (netErr) {
+      throw new Error(`Сервер API недоступен (${this.baseUrl}). Убедитесь, что сервер запущен.`);
+    }
 
     const text = await response.text();
     const data = text ? JSON.parse(text) : null;
@@ -356,3 +367,6 @@ class SecurityDatabase {
 }
 
 const db = new SecurityDatabase();
+if (typeof window !== 'undefined') {
+  window.db = db;
+}

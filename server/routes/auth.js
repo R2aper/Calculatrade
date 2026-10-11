@@ -1,8 +1,7 @@
 import express from 'express';
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
 import { prisma } from '../db.js';
-import { signToken } from '../lib/token.js';
+import { signToken, verifyToken } from '../lib/token.js';
 
 const router = express.Router();
 
@@ -56,6 +55,16 @@ router.post('/register', async (req, res) => {
     data: {
       login,
       passwordHash,
+      criteria: {
+        create: {
+          formula: 'damage * probability * priority',
+          damageMax: 4,
+          probMax: 4,
+          priorityMax: 4,
+          riskAppetite: 12,
+          costPerPoint: 50000,
+        },
+      },
     },
   });
 
@@ -124,7 +133,7 @@ router.post('/refresh', (req, res) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'calculatrade-dev-secret');
+    const decoded = verifyToken(token);
     const refreshedToken = signToken({ userId: decoded.userId });
 
     return res.json({

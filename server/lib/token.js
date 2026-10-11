@@ -1,10 +1,10 @@
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'calculatrade-dev-secret';
+const getJwtSecret = () => process.env.JWT_SECRET || 'calculatrade-dev-secret';
 
 export const signToken = (payload) =>
-  jwt.sign(payload, JWT_SECRET, {
+  jwt.sign(payload, getJwtSecret(), {
     expiresIn: '24h',
   });
 
-export const verifyToken = (token) => jwt.verify(token, JWT_SECRET);
+export const verifyToken = (token) => jwt.verify(token, getJwtSecret());

@@ -7,11 +7,25 @@ const router = express.Router();
 router.use(authenticate);
 
 router.get('/', async (req, res) => {
-  const criteria = await prisma.criteria.findUnique({
+  let criteria = await prisma.criteria.findUnique({
     where: { userId: req.user.userId },
   });
 
-  return res.json(criteria || null);
+  if (!criteria) {
+    criteria = await prisma.criteria.create({
+      data: {
+        userId: req.user.userId,
+        formula: 'damage * probability * priority',
+        damageMax: 4,
+        probMax: 4,
+        priorityMax: 4,
+        riskAppetite: 12,
+        costPerPoint: 50000,
+      },
+    });
+  }
+
+  return res.json(criteria);
 });
 
 router.put('/', async (req, res) => {

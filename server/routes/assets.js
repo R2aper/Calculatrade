@@ -58,9 +58,22 @@ router.delete('/:id', async (req, res) => {
     return res.status(404).json({ error: 'Not Found', message: 'Актив не найден.' });
   }
 
-  await prisma.risk.deleteMany({
+  const linkedRisks = await prisma.risk.findMany({
     where: { userId: req.user.userId, assetId: req.params.id },
+    select: { id: true },
   });
+
+  const riskIds = linkedRisks.map((r) => r.id);
+  if (riskIds.length > 0) {
+    await prisma.measure.updateMany({
+      where: { userId: req.user.userId, linkedRiskId: { in: riskIds } },
+      data: { linkedRiskId: null },
+    });
+
+    await prisma.risk.deleteMany({
+      where: { id: { in: riskIds } },
+    });
+  }
 
   await prisma.asset.delete({
     where: { id: req.params.id },

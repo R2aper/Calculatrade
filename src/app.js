@@ -1,39 +1,39 @@
 // ====================== ALPINE.JS КОМПОНЕНТ ======================
-document.addEventListener('alpine:init', () => {
-  Alpine.data(
-      'app',
-      () => ({
-        currentTab: 0,
-        criteria: {
-          formula: 'Урон ⋅ Вероятность ⋅ Приоритет',
-          damageMax: 4,
-          probMax: 4,
-          priorityMax: 4,
-          riskAppetite: 12,
-          costPerPoint: 50000
-        },
-        assets: [],
-        risks: [],
-        measures: [],
-        riskSearch: '',
-        riskFilter: 'all',
-        selectedRiskId: null,
-        riskSort: 'score-desc',
-        currentMeasureIdForLinking: null,
-        linkMeasureModalOpen: false,
-        linkMeasureRiskModalOpen: false,
-        currentRiskIdForMeasureLinking: null,
+function registerApp() {
+  const factory = () => ({
+    currentTab: 0,
+    criteria: {
+      formula: 'Урон ⋅ Вероятность ⋅ Приоритет',
+      damageMax: 4,
+      probMax: 4,
+      priorityMax: 4,
+      riskAppetite: 12,
+      costPerPoint: 50000
+    },
+    assets: [],
+    risks: [],
+    measures: [],
+    riskSearch: '',
+    riskFilter: 'all',
+    selectedRiskId: null,
+    riskSort: 'score-desc',
+    currentMeasureIdForLinking: null,
+    linkMeasureModalOpen: false,
+    linkMeasureRiskModalOpen: false,
+    selectedMeasureIdForLinking: '',
+    selectedRiskIdForLinking: '',
+    isLoading: false,
 
-        // ====================== АВТОРИЗАЦИЯ ======================
-        isLoggedIn: false,
-        currentUser: {login: ''},
-        authModalOpen: false,
-        authTab: 'login',
-        authForm: {
-          login: '',
-          password: '',
-        },
-        dbInitialized: false,
+    // ====================== АВТОРИЗАЦИЯ ======================
+    isLoggedIn: false,
+    currentUser: {login: ''},
+    authModalOpen: false,
+    authTab: 'login',
+    authForm: {
+      login: '',
+      password: '',
+    },
+    dbInitialized: false,
 
         // ====================== ИНИЦИАЛИЗАЦИЯ ======================
         async init() {
@@ -238,11 +238,20 @@ document.addEventListener('alpine:init', () => {
 
         // ====================== КРИТЕРИИ ======================
         async saveCriteria() {
-          const saved = await db.saveCriteria(this.criteria);
-          if (saved) {
-            this.showNotification(' Критерии сохранены!', 'success');
-          } else {
-            this.showNotification(' Ошибка сохранения критериев', 'error');
+          if (!this.isLoggedIn) {
+            this.showNotification('⚠️ Для сохранения критериев необходимо войти в аккаунт', 'warning');
+            this.authModalOpen = true;
+            return;
+          }
+          try {
+            const saved = await db.saveCriteria(this.criteria);
+            if (saved) {
+              this.showNotification('✅ Критерии сохранены!', 'success');
+            } else {
+              this.showNotification('❌ Ошибка сохранения критериев', 'error');
+            }
+          } catch (err) {
+            this.showNotification(`❌ ${err.message}`, 'error');
           }
         },
 
@@ -258,31 +267,38 @@ document.addEventListener('alpine:init', () => {
         },
 
         async submitAsset() {
+          if (!this.isLoggedIn) {
+            this.showNotification('⚠️ Для создания актива необходимо войти в аккаунт', 'warning');
+            this.authModalOpen = true;
+            return;
+          }
           if (!this.assetForm.name.trim()) {
-            this.showNotification(' Введите название актива', 'error');
+            this.showNotification('❌ Введите название актива', 'error');
             return;
           }
           if (!this.assetForm.value || isNaN(this.assetForm.value)) {
-            this.showNotification(' Введите корректную стоимость', 'error');
+            this.showNotification('❌ Введите корректную стоимость', 'error');
             return;
           }
           if (this.assetForm.priority < 1 || this.assetForm.priority > 4) {
-            this.showNotification(
-                'Приоритет должен быть от 1 до 4', 'error');
+            this.showNotification('❌ Приоритет должен быть от 1 до 4', 'error');
             return;
           }
 
-          const asset = await db.addAsset({
-            name: this.assetForm.name,
-            value: parseInt(this.assetForm.value),
-            priority: parseInt(this.assetForm.priority)
-          });
+          try {
+            const asset = await db.addAsset({
+              name: this.assetForm.name.trim(),
+              value: Number(this.assetForm.value),
+              priority: Number(this.assetForm.priority)
+            });
 
-          if (asset) {
-            this.assets.push(asset);
-            this.closeAddAssetModal();
-            this.showNotification(
-                ` Актив "${this.assetForm.name}" добавлен`, 'success');
+            if (asset) {
+              this.assets.push(asset);
+              this.closeAddAssetModal();
+              this.showNotification(`✅ Актив "${this.assetForm.name}" добавлен`, 'success');
+            }
+          } catch (err) {
+            this.showNotification(`❌ ${err.message}`, 'error');
           }
         },
 
@@ -295,58 +311,71 @@ document.addEventListener('alpine:init', () => {
           const asset = this.assets.find(a => a.id === assetId);
           if (!asset) return;
 
-          await db.updateAsset(assetId, {priority: newPriority});
-          asset.priority = newPriority;
+          try {
+            await db.updateAsset(assetId, {priority: newPriority});
+            asset.priority = newPriority;
 
-          const linkedRisks = this.risks.filter(r => r.assetId === assetId);
-          for (const r of linkedRisks) {
-            r.priority = newPriority;
-            r.score = this.calculateRisk(r.damage, r.probability, r.priority);
+            const linkedRisks = this.risks.filter(r => r.assetId === assetId);
+            for (const r of linkedRisks) {
+              r.priority = newPriority;
+              r.score = this.calculateRisk(r.damage, r.probability, r.priority);
 
-            if (r.residualScore !== null) {
-              r.residualScore =
-                  this.calculateResidualRisk(r, r.reduceDamage, r.reduceProb);
+              if (r.residualScore !== null) {
+                r.residualScore = this.calculateResidualRisk(r, r.reduceDamage, r.reduceProb);
+              }
+              await db.updateRisk(r.id, {
+                priority: r.priority,
+                score: r.score,
+                residualScore: r.residualScore
+              });
             }
-            await db.updateRisk(r.id, {
-              priority: r.priority,
-              score: r.score,
-              residualScore: r.residualScore
-            });
-          }
 
-          this.showNotification(
-              ` Приоритет актива "${asset.name}" обновлён`, 'success');
+            this.showNotification(`✅ Приоритет актива "${asset.name}" обновлён`, 'success');
+          } catch (err) {
+            this.showNotification(`❌ ${err.message}`, 'error');
+          }
         },
 
         async updateAsset(assetId, updates) {
           const asset = this.assets.find(a => a.id === assetId);
           if (!asset) return;
 
-          // Обновляем в объекте
-          Object.assign(asset, updates);
-
-          // Сохраняем в БД
-          await db.updateAsset(assetId, updates);
-
-          this.showNotification(' Актив обновлен', 'success');
+          try {
+            Object.assign(asset, updates);
+            await db.updateAsset(assetId, updates);
+            this.showNotification('✅ Актив обновлен', 'success');
+          } catch (err) {
+            this.showNotification(`❌ ${err.message}`, 'error');
+          }
         },
 
         async deleteAsset(id) {
           const asset = this.assets.find(a => a.id === id);
+          if (!asset) return;
           const linkedRisks = this.risks.filter(r => r.assetId === id);
 
           if (linkedRisks.length > 0) {
-            const confirm_delete = confirm(`Актив "${asset.name}" имеет ${
-                linkedRisks.length} риск(ов). 
-                     Они будут удалены. Продолжить?`);
+            const confirm_delete = confirm(`Актив "${asset.name}" имеет ${linkedRisks.length} риск(ов). Они будут удалены. Продолжить?`);
             if (!confirm_delete) return;
           }
 
-          await db.deleteAsset(id);
-          this.assets = this.assets.filter(a => a.id !== id);
-          this.risks = this.risks.filter(r => r.assetId !== id);
-
-          this.showNotification(' Актив удалён', 'success');
+          try {
+            await db.deleteAsset(id);
+            const deletedRiskIds = linkedRisks.map(r => r.id);
+            this.assets = this.assets.filter(a => a.id !== id);
+            this.risks = this.risks.filter(r => r.assetId !== id);
+            for (const m of this.measures) {
+              if (deletedRiskIds.includes(m.linkedRiskId)) {
+                m.linkedRiskId = null;
+              }
+            }
+            if (deletedRiskIds.includes(this.selectedRiskId)) {
+              this.selectedRiskId = null;
+            }
+            this.showNotification('✅ Актив удалён', 'success');
+          } catch (err) {
+            this.showNotification(`❌ ${err.message}`, 'error');
+          }
         },
 
         // ====================== РИСКИ ======================
@@ -377,47 +406,56 @@ document.addEventListener('alpine:init', () => {
         },
 
         async submitRisk() {
+          if (!this.isLoggedIn) {
+            this.showNotification('⚠️ Для добавления риска необходимо войти в аккаунт', 'warning');
+            this.authModalOpen = true;
+            return;
+          }
           if (!this.riskForm.threat.trim()) {
-            this.showNotification('Введите описание угрозы', 'error');
+            this.showNotification('❌ Введите описание угрозы', 'error');
             return;
           }
           if (!this.riskForm.vulnerability.trim()) {
-            this.showNotification('Введите описание уязвимости', 'error');
+            this.showNotification('❌ Введите описание уязвимости', 'error');
             return;
           }
           if (!this.riskForm.assetId) {
-            this.showNotification('Выберите актив', 'error');
+            this.showNotification('❌ Выберите актив', 'error');
             return;
           }
 
           const asset = this.assets.find(a => a.id === this.riskForm.assetId);
           if (!asset) {
-            this.showNotification('Актив не найден', 'error');
+            this.showNotification('❌ Актив не найден', 'error');
             return;
           }
 
           const score = this.calculateRisk(
               this.riskForm.damage, this.riskForm.probability, asset.priority);
 
-          const risk = await db.addRisk({
-            threat: this.riskForm.threat,
-            vulnerability: this.riskForm.vulnerability,
-            assetId: asset.id,
-            damage: parseInt(this.riskForm.damage),
-            probability: parseInt(this.riskForm.probability),
-            priority: asset.priority,
-            score: score,
-            residualScore: null,
-            measureId: null,
-            reduceDamage: 0,
-            reduceProb: 0
-          });
+          try {
+            const risk = await db.addRisk({
+              threat: this.riskForm.threat.trim(),
+              vulnerability: this.riskForm.vulnerability.trim(),
+              assetId: asset.id,
+              damage: Number(this.riskForm.damage),
+              probability: Number(this.riskForm.probability),
+              priority: asset.priority,
+              score: score,
+              residualScore: null,
+              measureId: null,
+              reduceDamage: 0,
+              reduceProb: 0
+            });
 
-          if (risk) {
-            this.risks.push(risk);
-            this.closeAddRiskModal();
-            this.showNotification(
-                `Риск добавлен к активу "${asset.name}"`, 'success');
+            if (risk) {
+              this.risks.push(risk);
+              this.closeAddRiskModal();
+              this.showNotification(
+                  `✅ Риск добавлен к активу "${asset.name}"`, 'success');
+            }
+          } catch (err) {
+            this.showNotification(`❌ ${err.message}`, 'error');
           }
         },
 
@@ -510,10 +548,19 @@ document.addEventListener('alpine:init', () => {
           const risk = this.risks.find(r => r.id === id);
           if (!risk) return;
           if (!confirm(`Удалить риск «${risk.threat}»?`)) return;
-          await db.deleteRisk(id);
-          this.risks = this.risks.filter(r => r.id !== id);
-          if (this.selectedRiskId === id) this.selectedRiskId = null;
-          this.showNotification('Риск удалён', 'success');
+          try {
+            await db.deleteRisk(id);
+            this.risks = this.risks.filter(r => r.id !== id);
+            for (const m of this.measures) {
+              if (m.linkedRiskId === id) {
+                m.linkedRiskId = null;
+              }
+            }
+            if (this.selectedRiskId === id) this.selectedRiskId = null;
+            this.showNotification('✅ Риск удалён', 'success');
+          } catch (err) {
+            this.showNotification(`❌ ${err.message}`, 'error');
+          }
         },
 
         // ====================== МЕРЫ ======================
@@ -530,40 +577,43 @@ document.addEventListener('alpine:init', () => {
         },
 
         async submitMeasure() {
+          if (!this.isLoggedIn) {
+            this.showNotification('⚠️ Для создания меры необходимо войти в аккаунт', 'warning');
+            this.authModalOpen = true;
+            return;
+          }
           if (!this.measureForm.name.trim()) {
-            this.showNotification('Введите название защитной меры', 'error');
+            this.showNotification('❌ Введите название защитной меры', 'error');
             return;
           }
           if (!this.measureForm.cost || isNaN(this.measureForm.cost)) {
-            this.showNotification('Введите корректную стоимость', 'error');
+            this.showNotification('❌ Введите корректную стоимость', 'error');
             return;
           }
-          if (this.measureForm.reduceDamage < 0 ||
-              this.measureForm.reduceDamage > 100) {
-            this.showNotification(
-                'Снижение ущерба должно быть 0-100%', 'error');
+          if (this.measureForm.reduceDamage < 0 || this.measureForm.reduceDamage > 100) {
+            this.showNotification('❌ Снижение ущерба должно быть 0-100%', 'error');
             return;
           }
-          if (this.measureForm.reduceProb < 0 ||
-              this.measureForm.reduceProb > 100) {
-            this.showNotification(
-                'Снижение вероятности должно быть 0-100%', 'error');
+          if (this.measureForm.reduceProb < 0 || this.measureForm.reduceProb > 100) {
+            this.showNotification('❌ Снижение вероятности должно быть 0-100%', 'error');
             return;
           }
 
-          const measure = await db.addMeasure({
-            name: this.measureForm.name,
-            cost: parseInt(this.measureForm.cost),
-            reduceDamage: parseInt(this.measureForm.reduceDamage),
-            reduceProb: parseInt(this.measureForm.reduceProb)
-          });
+          try {
+            const measure = await db.addMeasure({
+              name: this.measureForm.name.trim(),
+              cost: Number(this.measureForm.cost),
+              reduceDamage: Number(this.measureForm.reduceDamage),
+              reduceProb: Number(this.measureForm.reduceProb)
+            });
 
-          if (measure) {
-            this.measures.push(measure);
-            this.closeAddMeasureModal();
-            this.showNotification(
-                `Защитная мера "${this.measureForm.name}" добавлена`,
-                'success');
+            if (measure) {
+              this.measures.push(measure);
+              this.closeAddMeasureModal();
+              this.showNotification(`✅ Защитная мера "${this.measureForm.name}" добавлена`, 'success');
+            }
+          } catch (err) {
+            this.showNotification(`❌ ${err.message}`, 'error');
           }
         },
 
@@ -571,232 +621,258 @@ document.addEventListener('alpine:init', () => {
           const measure = this.measures.find(m => m.id === measureId);
           if (!measure) return;
 
-          Object.assign(measure, {[field]: value});
-          await db.updateMeasure(measureId, {[field]: value});
+          try {
+            Object.assign(measure, {[field]: value});
+            await db.updateMeasure(measureId, {[field]: value});
 
-          // Если изменились параметры снижения, пересчитываем остаточный риск
-          // для привязанного риска
-          if ((field === 'reduceDamage' || field === 'reduceProb') &&
-              measure.linkedRiskId) {
-            const risk = this.risks.find(r => r.id === measure.linkedRiskId);
-            if (risk) {
-              risk.reduceDamage = measure.reduceDamage;
-              risk.reduceProb = measure.reduceProb;
-              risk.residualScore = this.calculateResidualRisk(
-                  risk, measure.reduceDamage, measure.reduceProb);
+            // Если изменились параметры снижения, пересчитываем остаточный риск для привязанного риска
+            if ((field === 'reduceDamage' || field === 'reduceProb') && measure.linkedRiskId) {
+              const risk = this.risks.find(r => r.id === measure.linkedRiskId);
+              if (risk) {
+                risk.reduceDamage = measure.reduceDamage;
+                risk.reduceProb = measure.reduceProb;
+                risk.residualScore = this.calculateResidualRisk(
+                    risk, measure.reduceDamage, measure.reduceProb);
 
-              await db.updateRisk(risk.id, {
-                reduceDamage: risk.reduceDamage,
-                reduceProb: risk.reduceProb,
-                residualScore: risk.residualScore
-              });
+                await db.updateRisk(risk.id, {
+                  reduceDamage: risk.reduceDamage,
+                  reduceProb: risk.reduceProb,
+                  residualScore: risk.residualScore
+                });
+              }
             }
-          }
 
-          this.showNotification('Мера обновлена', 'success');
+            this.showNotification('✅ Мера обновлена', 'success');
+          } catch (err) {
+            this.showNotification(`❌ ${err.message}`, 'error');
+          }
         },
 
         async deleteMeasure(id) {
-          await db.deleteMeasure(id);
-          this.measures = this.measures.filter(m => m.id !== id);
-          for (const r of this.risks) {
-            if (r.measureId === id) {
-              r.measureId = null;
-              r.reduceDamage = 0;
-              r.reduceProb = 0;
-              r.residualScore = null;
-              await db.updateRisk(r.id, {
-                measureId: null,
-                reduceDamage: 0,
-                reduceProb: 0,
-                residualScore: null
-              });
+          try {
+            await db.deleteMeasure(id);
+            this.measures = this.measures.filter(m => m.id !== id);
+            for (const r of this.risks) {
+              if (r.measureId === id) {
+                r.measureId = null;
+                r.reduceDamage = 0;
+                r.reduceProb = 0;
+                r.residualScore = null;
+                await db.updateRisk(r.id, {
+                  measureId: null,
+                  reduceDamage: 0,
+                  reduceProb: 0,
+                  residualScore: null
+                });
+              }
             }
+            this.showNotification('✅ Мера удалена', 'success');
+          } catch (err) {
+            this.showNotification(`❌ ${err.message}`, 'error');
           }
-          this.showNotification('Мера удалена', 'success');
         },
 
-        // ====================== ПРИВЯЗКА МЕР ======================
-        openLinkMeasureModal(measureId) {
-          this.currentMeasureIdForLinking = measureId;
+        // ====================== ПРИВЯЗКА МЕР (ИЗ ТАБА РИСКОВ) ======================
+        openLinkMeasureModal(riskId) {
+          this.selectedRiskId = riskId;
+          const risk = this.risks.find(r => r.id === riskId);
+          this.selectedMeasureIdForLinking = risk?.measureId || '';
           this.linkMeasureModalOpen = true;
         },
 
         closeLinkMeasureModal() {
           this.linkMeasureModalOpen = false;
-          this.currentMeasureIdForLinking = null;
+          this.selectedMeasureIdForLinking = '';
         },
 
+        getAvailableMeasuresForLinking() {
+          return this.measures.map(m => {
+            const isBoundToOther = m.linkedRiskId && m.linkedRiskId !== this.selectedRiskId;
+            const otherRisk = isBoundToOther ? this.risks.find(r => r.id === m.linkedRiskId) : null;
+            const extra = otherRisk ? ` [привязана к: ${otherRisk.threat}]` : '';
+            return {
+              id: m.id,
+              label: `${m.name} (-${m.reduceDamage}% ущерб, -${m.reduceProb}% вер., ${Number(m.cost).toLocaleString('ru')} ₽)${extra}`
+            };
+          });
+        },
+
+        async confirmLinkMeasureToRisk() {
+          const risk = this.risks.find(r => r.id === this.selectedRiskId);
+          if (!risk) {
+            this.showNotification('❌ Риск не найден', 'error');
+            return;
+          }
+
+          if (!this.selectedMeasureIdForLinking) {
+            this.showNotification('❌ Выберите защитную меру', 'error');
+            return;
+          }
+
+          const measure = this.measures.find(m => m.id === this.selectedMeasureIdForLinking);
+          if (!measure) {
+            this.showNotification('❌ Мера не найдена', 'error');
+            return;
+          }
+
+          try {
+            // Если мера была привязана к другому риску — отвязываем старый риск
+            if (measure.linkedRiskId && measure.linkedRiskId !== risk.id) {
+              const oldRisk = this.risks.find(r => r.id === measure.linkedRiskId);
+              if (oldRisk) {
+                oldRisk.measureId = null;
+                oldRisk.reduceDamage = 0;
+                oldRisk.reduceProb = 0;
+                oldRisk.residualScore = null;
+                await db.updateRisk(oldRisk.id, {
+                  measureId: null,
+                  reduceDamage: 0,
+                  reduceProb: 0,
+                  residualScore: null
+                });
+              }
+            }
+
+            // Если у этого риска уже была другая мера — отвязываем старую меру
+            if (risk.measureId && risk.measureId !== measure.id) {
+              const oldMeasure = this.measures.find(m => m.id === risk.measureId);
+              if (oldMeasure) {
+                oldMeasure.linkedRiskId = null;
+                await db.updateMeasure(oldMeasure.id, {linkedRiskId: null});
+              }
+            }
+
+            risk.measureId = measure.id;
+            risk.reduceDamage = measure.reduceDamage;
+            risk.reduceProb = measure.reduceProb;
+            risk.residualScore = this.calculateResidualRisk(risk, measure.reduceDamage, measure.reduceProb);
+            measure.linkedRiskId = risk.id;
+
+            await db.updateRisk(risk.id, {
+              measureId: risk.measureId,
+              reduceDamage: risk.reduceDamage,
+              reduceProb: risk.reduceProb,
+              residualScore: risk.residualScore
+            });
+
+            await db.updateMeasure(measure.id, {linkedRiskId: risk.id});
+
+            this.closeLinkMeasureModal();
+            this.showNotification(`✅ Мера "${measure.name}" привязана к риску "${risk.threat}"`, 'success');
+          } catch (err) {
+            this.showNotification(`❌ ${err.message}`, 'error');
+          }
+        },
+
+        // ====================== ПРИВЯЗКА РИСКА (ИЗ ТАБА МЕР) ======================
         openLinkMeasureRiskModal(measureId) {
           this.currentMeasureIdForLinking = measureId;
+          const measure = this.measures.find(m => m.id === measureId);
+          this.selectedRiskIdForLinking = measure?.linkedRiskId || '';
           this.linkMeasureRiskModalOpen = true;
         },
 
         closeLinkMeasureRiskModal() {
           this.linkMeasureRiskModalOpen = false;
           this.currentMeasureIdForLinking = null;
-        },
-
-        async confirmLinkMeasure() {
-          const select = document.getElementById('riskSelect');
-          const riskId = select.value;
-
-          if (!riskId) {
-            this.showNotification('Выберите риск!', 'error');
-            return;
-          }
-
-          const risk = this.risks.find(r => r.id == riskId);
-          if (!risk) {
-            this.showNotification('Риск не найден', 'error');
-            return;
-          }
-
-          const measure =
-              this.measures.find(m => m.id === this.currentMeasureIdForLinking);
-          if (!measure) {
-            this.showNotification('Мера не найдена', 'error');
-            return;
-          }
-
-          // Снимаем старую привязку риска, если она была.
-          if (risk.measureId && risk.measureId !== measure.id) {
-            const oldMeasure = this.measures.find(m => m.id === risk.measureId);
-            if (oldMeasure) {
-              oldMeasure.linkedRiskId = null;
-              await db.updateMeasure(oldMeasure.id, {linkedRiskId: null});
-            }
-          }
-
-          // Снимаем старую привязку выбранной меры, если она была.
-          if (measure.linkedRiskId && measure.linkedRiskId !== risk.id) {
-            const oldRisk = this.risks.find(r => r.id === measure.linkedRiskId);
-            if (oldRisk) {
-              oldRisk.measureId = null;
-              oldRisk.reduceDamage = 0;
-              oldRisk.reduceProb = 0;
-              oldRisk.residualScore = null;
-              await db.updateRisk(oldRisk.id, {
-                measureId: null,
-                reduceDamage: 0,
-                reduceProb: 0,
-                residualScore: null
-              });
-            }
-          }
-
-          risk.measureId = this.currentMeasureIdForLinking;
-          risk.reduceDamage = measure.reduceDamage;
-          risk.reduceProb = measure.reduceProb;
-          risk.residualScore = this.calculateResidualRisk(
-              risk, measure.reduceDamage, measure.reduceProb);
-
-          await db.updateRisk(risk.id, {
-            measureId: risk.measureId,
-            reduceDamage: risk.reduceDamage,
-            reduceProb: risk.reduceProb,
-            residualScore: risk.residualScore
-          });
-
-          await db.updateMeasure(measure.id, {linkedRiskId: risk.id});
-
-          this.closeLinkMeasureModal();
-          this.showNotification(
-              `Мера привязана к риску "${risk.threat}"`, 'success');
+          this.selectedRiskIdForLinking = '';
         },
 
         async confirmLinkMeasureRisk() {
-          const select = document.getElementById('riskSelectForMeasure');
-          const riskId = select.value;
-
+          const riskId = this.selectedRiskIdForLinking;
           if (!riskId) {
             this.showNotification('❌ Выберите риск!', 'error');
             return;
           }
 
-          const risk = this.risks.find(r => r.id == riskId);
+          const risk = this.risks.find(r => r.id === riskId);
           if (!risk) {
             this.showNotification('❌ Риск не найден', 'error');
             return;
           }
 
-          const measure =
-              this.measures.find(m => m.id === this.currentMeasureIdForLinking);
+          const measure = this.measures.find(m => m.id === this.currentMeasureIdForLinking);
           if (!measure) {
-            this.showNotification(' Мера не найдена', 'error');
+            this.showNotification('❌ Мера не найдена', 'error');
             return;
           }
 
-          // Если новый риск уже привязан к мере - отвязать старую привязку
-          if (risk.measureId && risk.measureId !== measure.id) {
-            const oldMeasure = this.measures.find(m => m.id === risk.measureId);
-            if (oldMeasure) {
-              await db.updateMeasure(oldMeasure.id, {linkedRiskId: null});
+          try {
+            // Если выбранный риск уже привязан к другой мере - отвязать старую меру
+            if (risk.measureId && risk.measureId !== measure.id) {
+              const oldMeasure = this.measures.find(m => m.id === risk.measureId);
+              if (oldMeasure) {
+                oldMeasure.linkedRiskId = null;
+                await db.updateMeasure(oldMeasure.id, {linkedRiskId: null});
+              }
             }
-          }
 
-          // Если эта мера уже привязана к другому риску - отвязать
-          if (measure.linkedRiskId && measure.linkedRiskId !== risk.id) {
-            const oldRisk = this.risks.find(r => r.id === measure.linkedRiskId);
-            if (oldRisk) {
-              oldRisk.measureId = null;
-              oldRisk.reduceDamage = 0;
-              oldRisk.reduceProb = 0;
-              oldRisk.residualScore = null;
-              await db.updateRisk(oldRisk.id, {
-                measureId: null,
-                reduceDamage: 0,
-                reduceProb: 0,
-                residualScore: null
-              });
+            // Если эта мера уже привязана к другому риску - отвязать старый риск
+            if (measure.linkedRiskId && measure.linkedRiskId !== risk.id) {
+              const oldRisk = this.risks.find(r => r.id === measure.linkedRiskId);
+              if (oldRisk) {
+                oldRisk.measureId = null;
+                oldRisk.reduceDamage = 0;
+                oldRisk.reduceProb = 0;
+                oldRisk.residualScore = null;
+                await db.updateRisk(oldRisk.id, {
+                  measureId: null,
+                  reduceDamage: 0,
+                  reduceProb: 0,
+                  residualScore: null
+                });
+              }
             }
+
+            risk.measureId = this.currentMeasureIdForLinking;
+            risk.reduceDamage = measure.reduceDamage;
+            risk.reduceProb = measure.reduceProb;
+            risk.residualScore = this.calculateResidualRisk(risk, measure.reduceDamage, measure.reduceProb);
+            measure.linkedRiskId = risk.id;
+
+            await db.updateRisk(risk.id, {
+              measureId: risk.measureId,
+              reduceDamage: risk.reduceDamage,
+              reduceProb: risk.reduceProb,
+              residualScore: risk.residualScore
+            });
+
+            await db.updateMeasure(measure.id, {linkedRiskId: risk.id});
+
+            this.closeLinkMeasureRiskModal();
+            this.showNotification(`✅ Мера "${measure.name}" привязана к риску "${risk.threat}"`, 'success');
+          } catch (err) {
+            this.showNotification(`❌ ${err.message}`, 'error');
           }
-
-          risk.measureId = this.currentMeasureIdForLinking;
-          risk.reduceDamage = measure.reduceDamage;
-          risk.reduceProb = measure.reduceProb;
-          risk.residualScore = this.calculateResidualRisk(
-              risk, measure.reduceDamage, measure.reduceProb);
-
-          await db.updateRisk(risk.id, {
-            measureId: risk.measureId,
-            reduceDamage: risk.reduceDamage,
-            reduceProb: risk.reduceProb,
-            residualScore: risk.residualScore
-          });
-
-          await db.updateMeasure(measure.id, {linkedRiskId: risk.id});
-
-          this.closeLinkMeasureRiskModal();
-          this.showNotification(
-              `Мера "${measure.name}" перепривязана к риску "${
-                  risk.threat}"`,
-              'success');
         },
 
         async unlinkMeasureFromRisk(riskId) {
           const risk = this.risks.find(r => r.id === riskId);
           if (!risk) return;
 
-          const measure = this.measures.find(m => m.id === risk.measureId);
-          if (measure) {
-            await db.updateMeasure(measure.id, {linkedRiskId: null});
+          try {
+            const measure = this.measures.find(m => m.id === risk.measureId || m.linkedRiskId === risk.id);
+            if (measure) {
+              measure.linkedRiskId = null;
+              await db.updateMeasure(measure.id, {linkedRiskId: null});
+            }
+
+            risk.measureId = null;
+            risk.reduceDamage = 0;
+            risk.reduceProb = 0;
+            risk.residualScore = null;
+
+            await db.updateRisk(risk.id, {
+              measureId: null,
+              reduceDamage: 0,
+              reduceProb: 0,
+              residualScore: null
+            });
+
+            this.showNotification(`✅ Мера отвязана от риска "${risk.threat}"`, 'success');
+          } catch (err) {
+            this.showNotification(`❌ ${err.message}`, 'error');
           }
-
-          risk.measureId = null;
-          risk.reduceDamage = 0;
-          risk.reduceProb = 0;
-          risk.residualScore = null;
-
-          await db.updateRisk(risk.id, {
-            measureId: null,
-            reduceDamage: 0,
-            reduceProb: 0,
-            residualScore: null
-          });
-
-          this.showNotification(
-              ` Мера отвязана от риска "${risk.threat}"`, 'success');
         },
 
         // ====================== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ======================
@@ -842,11 +918,15 @@ document.addEventListener('alpine:init', () => {
         },
 
         getEffectForMeasure(measure) {
-          const linkedRisk = this.risks.find(r => r.measureId === measure.id);
+          const linkedRisk = this.risks.find(r => r.measureId === measure.id || r.id === measure.linkedRiskId);
           if (!linkedRisk) return null;
 
+          const residual = linkedRisk.residualScore != null
+            ? linkedRisk.residualScore
+            : this.calculateResidualRisk(linkedRisk, measure.reduceDamage, measure.reduceProb);
+
           const effect = this.calculateExpectedLoss(linkedRisk.score) -
-              this.calculateExpectedLoss(linkedRisk.residualScore);
+              this.calculateExpectedLoss(residual);
           const rosi = this.calculateNetROSI(effect, measure.cost);
 
           return {effect, rosi};
@@ -864,7 +944,7 @@ document.addEventListener('alpine:init', () => {
         },
 
         calculateExpectedLoss(riskScore) {
-          return riskScore * this.criteria.costPerPoint;
+          return (Number(riskScore) || 0) * (Number(this.criteria?.costPerPoint) || 50000);
         },
 
         calculateROSI(effect, cost) {
@@ -881,17 +961,17 @@ document.addEventListener('alpine:init', () => {
 
         // ====================== ДАШБОРД ======================
         get totalRiskBefore() {
-          return this.risks.reduce((sum, r) => sum + r.score, 0);
+          return this.risks.reduce((sum, r) => sum + (Number(r.score) || 0), 0);
         },
 
         get totalRiskAfter() {
           return this.risks.reduce(
-              (sum, r) => sum + (r.residualScore != null ? r.residualScore : r.score), 0);
+              (sum, r) => sum + (r.residualScore != null ? Number(r.residualScore) : (Number(r.score) || 0)), 0);
         },
 
         get totalEffect() {
           return this.risks.reduce((sum, r) => {
-            if (r.residualScore === null) return sum;
+            if (r.residualScore === null || r.residualScore === undefined) return sum;
             const lossBefore = this.calculateExpectedLoss(r.score);
             const lossAfter = this.calculateExpectedLoss(r.residualScore);
             return sum + (lossBefore - lossAfter);
@@ -903,9 +983,8 @@ document.addEventListener('alpine:init', () => {
               this.risks.filter(r => r.residualScore !== null).map(r => {
                 const effect = this.calculateExpectedLoss(r.score) -
                     this.calculateExpectedLoss(r.residualScore);
-                const cost =
-                    this.measures.find(m => m.id === r.measureId)?.cost ||
-                    100000;
+                const measure = this.measures.find(m => m.id === r.measureId || m.linkedRiskId === r.id);
+                const cost = measure ? Number(measure.cost) : 0;
                 return this.calculateNetROSI(effect, cost);
               });
           return rosis.length ?
@@ -931,11 +1010,11 @@ document.addEventListener('alpine:init', () => {
         },
 
         get economicTotalCost() {
-          return this.measures.reduce((s, m) => s + m.cost, 0);
+          return this.measures.reduce((s, m) => s + (Number(m.cost) || 0), 0);
         },
 
         get economicTotalEffect() {
-          return this.economicSummaryBefore - this.economicSummaryAfter -
+          return (this.economicSummaryBefore - this.economicSummaryAfter) -
               this.economicTotalCost;
         },
 
@@ -960,8 +1039,20 @@ document.addEventListener('alpine:init', () => {
             };
 
             this.currentTab = 0;
-            this.showNotification('Данные пользователя очищены', 'success');
+            this.showNotification('✅ Данные пользователя очищены', 'success');
           }
         }
-      }));
-});
+  });
+
+  if (typeof Alpine !== 'undefined') {
+    Alpine.data('app', factory);
+  } else if (typeof window !== 'undefined' && window.Alpine) {
+    window.Alpine.data('app', factory);
+  }
+}
+
+if (typeof window !== 'undefined' && window.Alpine) {
+  registerApp();
+} else if (typeof document !== 'undefined') {
+  document.addEventListener('alpine:init', registerApp);
+}

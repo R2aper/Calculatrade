@@ -310,7 +310,7 @@
             <div class="detail-block"><span class="detail-caption">Защитная мера</span><div class="measure-link" x-show="getRiskMeasure(selectedRisk)"><span>◉</span><b x-text="getRiskMeasure(selectedRisk)?.name"></b></div><div class="measure-unlinked" x-show="!getRiskMeasure(selectedRisk)">Мера ещё не привязана</div></div>
             <div class="detail-actions">
               <button x-show="!selectedRisk.measureId" @click="openLinkMeasureModal(selectedRisk.id)" class="btn btn-primary">Привязать меру</button>
-              <button x-show="selectedRisk.measureId" @click="openLinkMeasureRiskModal(selectedRisk.id)" class="btn btn-secondary">Изменить меру</button>
+              <button x-show="selectedRisk.measureId" @click="openLinkMeasureModal(selectedRisk.id)" class="btn btn-secondary">Изменить меру</button>
               <button x-show="selectedRisk.measureId" @click="unlinkMeasureFromRisk(selectedRisk.id)" class="btn btn-secondary">Отвязать</button>
               <button @click="deleteRisk(selectedRisk.id); selectedRiskId=null" class="btn btn-danger">Удалить риск</button>
             </div>
@@ -474,7 +474,7 @@
                 </div>
             </div>
         </div>
-        <div v-if="measures.length > 0" class="card">
+        <div x-show="measures.length > 0" class="card">
             <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1.5rem;">Анализ по защитным мерам</h3>
             <div class="data-grid cols-2">
                 <template x-for="m in measures" :key="m.id">
@@ -498,40 +498,56 @@
         </div>
     </div>
 
-    <!-- МОДАЛЬНОЕ ОКНО ДЛЯ ПРИВЯЗКИ МЕРЫ -->
+    <!-- МОДАЛЬНОЕ ОКНО ДЛЯ ПРИВЯЗКИ МЕРЫ К РИСКУ (ИЗ ТАБА РИСКОВ) -->
     <div x-show="linkMeasureModalOpen" x-cloak class="modal-overlay" @click.self="closeLinkMeasureModal()">
         <div class="modal">
             <h3 class="modal-header">Привязать защитную меру к риску</h3>
             <div class="modal-body">
-                <select id="riskSelect" class="form-select">
-                            <option value="">Выберите риск...</option>
-                            <template x-for="risk in getAvailableRisksForLinking()" :key="risk.id">
-                                <option :value="risk.id" x-text="risk.label"></option>
-                            </template>
-                        </select>
+                <div class="form-group">
+                    <label class="form-label">Выберите защитную меру</label>
+                    <select x-model="selectedMeasureIdForLinking" class="form-select">
+                        <option value="">Выберите меру...</option>
+                        <template x-for="m in getAvailableMeasuresForLinking()" :key="m.id">
+                            <option :value="m.id" x-text="m.label"></option>
+                        </template>
+                    </select>
+                </div>
+                <template x-if="measures.length === 0">
+                    <div class="text-xs text-muted" style="margin-top: 0.5rem;">
+                        У вас пока нет созданных мер. Сначала создайте меру во вкладке «Меры защиты».
+                    </div>
+                </template>
             </div>
             <div class="modal-footer">
                 <button @click="closeLinkMeasureModal()" class="btn btn-secondary">Отмена</button>
-                <button @click="confirmLinkMeasure()" class="btn btn-primary">Привязать</button>
+                <button @click="confirmLinkMeasureToRisk()" class="btn btn-primary" :disabled="!selectedMeasureIdForLinking">Привязать</button>
             </div>
         </div>
     </div>
 
-    <!-- МОДАЛЬНОЕ ОКНО ДЛЯ ПРИВЯЗКИ МЕРЫ С ДРУГОЙ СТОРОНЫ (ИЗ ТАБА РИСКИ) -->
+    <!-- МОДАЛЬНОЕ ОКНО ДЛЯ ПРИВЯЗКИ РИСКА К МЕРЕ (ИЗ ТАБА МЕР) -->
     <div x-show="linkMeasureRiskModalOpen" x-cloak class="modal-overlay" @click.self="closeLinkMeasureRiskModal()">
         <div class="modal">
             <h3 class="modal-header">Привязать риск к защитной мере</h3>
             <div class="modal-body">
-                <select id="riskSelectForMeasure" class="form-select">
-                            <option value="">Выберите риск...</option>
-                            <template x-for="risk in getAvailableRisksForMeasureLinking()" :key="risk.id">
-                                <option :value="risk.id" x-text="risk.label"></option>
-                            </template>
-                        </select>
+                <div class="form-group">
+                    <label class="form-label">Выберите риск</label>
+                    <select x-model="selectedRiskIdForLinking" class="form-select">
+                        <option value="">Выберите риск...</option>
+                        <template x-for="risk in getAvailableRisksForMeasureLinking()" :key="risk.id">
+                            <option :value="risk.id" x-text="risk.label"></option>
+                        </template>
+                    </select>
+                </div>
+                <template x-if="risks.length === 0">
+                    <div class="text-xs text-muted" style="margin-top: 0.5rem;">
+                        У вас пока нет созданных рисков. Сначала создайте риск во вкладке «Риски».
+                    </div>
+                </template>
             </div>
             <div class="modal-footer">
                 <button @click="closeLinkMeasureRiskModal()" class="btn btn-secondary">Отмена</button>
-                <button @click="confirmLinkMeasureRisk()" class="btn btn-primary">Привязать</button>
+                <button @click="confirmLinkMeasureRisk()" class="btn btn-primary" :disabled="!selectedRiskIdForLinking">Привязать</button>
             </div>
         </div>
     </div>
@@ -581,7 +597,7 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">Выберите актив</label>
-                    <select x-model.number="riskForm.assetId" class="form-select">
+                    <select x-model="riskForm.assetId" class="form-select">
                                 <option value="">Выберите актив...</option>
                                 <template x-for="asset in assets" :key="asset.id">
                                     <option :value="asset.id" x-text="asset.name"></option>

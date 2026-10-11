@@ -64,7 +64,12 @@ router.delete('/:id', async (req, res) => {
 
   await prisma.risk.updateMany({
     where: { userId: req.user.userId, measureId: req.params.id },
-    data: { measureId: null },
+    data: {
+      measureId: null,
+      residualScore: null,
+      reduceDamage: 0,
+      reduceProb: 0,
+    },
   });
 
   await prisma.measure.delete({
@@ -92,9 +97,21 @@ router.post('/:id/link-risk', async (req, res) => {
     return res.status(404).json({ error: 'Not Found', message: 'Риск не найден.' });
   }
 
+  // Снимаем старую привязку с любых рисков, связанных с этой мерой
   await prisma.risk.updateMany({
     where: { userId: req.user.userId, measureId: req.params.id },
-    data: { measureId: null },
+    data: {
+      measureId: null,
+      residualScore: null,
+      reduceDamage: 0,
+      reduceProb: 0,
+    },
+  });
+
+  // Если этот риск был привязан к другой мере, очищаем её
+  await prisma.measure.updateMany({
+    where: { userId: req.user.userId, linkedRiskId: risk.id },
+    data: { linkedRiskId: null },
   });
 
   const updatedMeasure = await prisma.measure.update({
@@ -104,10 +121,17 @@ router.post('/:id/link-risk', async (req, res) => {
     },
   });
 
+  const newDamage = risk.damage * (1 - measure.reduceDamage / 100);
+  const newProb = risk.probability * (1 - measure.reduceProb / 100);
+  const residualScore = Math.max(1, Math.round(newDamage * newProb * risk.priority));
+
   await prisma.risk.update({
     where: { id: risk.id },
     data: {
       measureId: measure.id,
+      reduceDamage: measure.reduceDamage,
+      reduceProb: measure.reduceProb,
+      residualScore,
     },
   });
 
@@ -125,7 +149,12 @@ router.delete('/:id/link-risk', async (req, res) => {
 
   await prisma.risk.updateMany({
     where: { userId: req.user.userId, measureId: req.params.id },
-    data: { measureId: null },
+    data: {
+      measureId: null,
+      residualScore: null,
+      reduceDamage: 0,
+      reduceProb: 0,
+    },
   });
 
   const updatedMeasure = await prisma.measure.update({
