@@ -17,16 +17,22 @@ window.CalculatradeModules.dashboard = {
 
   getRiskCategoryLabel(riskScore) {
     const category = this.getRiskCategory(riskScore);
-    if (category === 'low') return '✅ Низкий';
-    if (category === 'medium') return '⚠️ Средний';
-    return '🔴 Высокий';
+    if (category === 'low') return '✓ Низкий';
+    if (category === 'medium') return '⚠ Средний';
+    return '⬤ Высокий';
   },
 
   getEffectForMeasure(measure) {
-    const linkedRisk = this.risks.find(r => r.measureId === measure.id);
+    const linkedRisk = this.risks.find(
+        risk =>
+            risk.measureId === measure.id || risk.id === measure.linkedRiskId);
     if (!linkedRisk) return null;
+    const residualScore = linkedRisk.residualScore != null ?
+        linkedRisk.residualScore :
+        this.calculateResidualRisk(
+            linkedRisk, measure.reduceDamage, measure.reduceProb);
     const effect = this.calculateExpectedLoss(linkedRisk.score) -
-        this.calculateExpectedLoss(linkedRisk.residualScore);
+        this.calculateExpectedLoss(residualScore);
     const rosi = this.calculateNetROSI(effect, measure.cost);
     return {effect, rosi};
   },
@@ -91,6 +97,10 @@ window.CalculatradeModules.dashboard = {
     this.assets = [];
     this.risks = [];
     this.measures = [];
+    this.selectedRiskId = null;
+    this.riskSearch = '';
+    this.riskFilter = 'all';
+    this.riskSort = 'score-desc';
     this.criteria = {
       formula: 'Урон ⋅ Вероятность ⋅ Приоритет',
       damageMax: 4,
@@ -100,6 +110,6 @@ window.CalculatradeModules.dashboard = {
       costPerPoint: 50000
     };
     this.currentTab = 0;
-    this.showNotification('✅ Данные пользователя очищены', 'success');
+    this.showNotification('✓ Данные пользователя очищены', 'success');
   }
 };

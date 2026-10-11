@@ -8,7 +8,7 @@ window.CalculatradeModules.auth = {
   async init() {
     this.dbInitialized = await db.init();
     if (!this.dbInitialized) {
-      this.showNotification('❌ Сервер API недоступен', 'error');
+      this.showNotification('✗ Сервер API недоступен', 'error');
       return;
     }
     if (db.isLoggedIn()) {
@@ -26,13 +26,18 @@ window.CalculatradeModules.auth = {
           await Promise.all([
             db.getCriteria(), db.getAssets(), db.getRisks(), db.getMeasures()
           ]);
+      this.selectedRiskId = null;
+      this.riskSearch = '';
+      this.riskFilter = 'all';
+      this.riskSort = 'score-desc';
     } catch (error) {
       if (error.status === 401) {
         this.isLoggedIn = false;
         this.currentUser = {login: ''};
-        this.showNotification('❌ Сессия истекла, войдите снова', 'error');
+        this.showNotification('✗ Сессия истекла, войдите снова', 'error');
       } else {
-        this.showNotification(`❌ Не удалось загрузить данные: ${error.message}`, 'error');
+        this.showNotification(
+            `✗ Не удалось загрузить данные: ${error.message}`, 'error');
       }
     } finally {
       this.loading = false;
@@ -54,7 +59,7 @@ window.CalculatradeModules.auth = {
 
   async submitLogin() {
     if (!this.authForm.login || !this.authForm.password) {
-      this.showNotification('❌ Введите логин и пароль', 'error');
+      this.showNotification('✗ Введите логин и пароль', 'error');
       return;
     }
     const result =
@@ -68,20 +73,20 @@ window.CalculatradeModules.auth = {
       this.authModalOpen = false;
       await this.loadData();
       this.showNotification(
-          `✅ Добро пожаловать, ${this.currentUser.name}!`, 'success');
+          `✓ Добро пожаловать, ${this.currentUser.name}!`, 'success');
     } else {
-      this.showNotification(`❌ ${result.error}`, 'error');
+      this.showNotification(`✗ ${result.error}`, 'error');
     }
   },
 
   async submitRegister() {
     if (!this.authForm.login || !this.authForm.password) {
-      this.showNotification('❌ Заполните все поля', 'error');
+      this.showNotification('✗ Заполните все поля', 'error');
       return;
     }
     if (this.authForm.password.length < 8) {
       this.showNotification(
-          '❌ Пароль должен быть не менее 8 символов', 'error');
+          '✗ Пароль должен быть не менее 8 символов', 'error');
       return;
     }
     const result =
@@ -93,10 +98,10 @@ window.CalculatradeModules.auth = {
       this.authModalOpen = false;
       await this.loadData();
       this.showNotification(
-          `✅ Профиль "${this.currentUser.login}" создан и выполнен вход`,
+          `✓ Профиль "${this.currentUser.login}" создан и выполнен вход`,
           'success');
     } else {
-      this.showNotification(`❌ ${result.error}`, 'error');
+      this.showNotification(`✗ ${result.error}`, 'error');
     }
   },
 
@@ -109,9 +114,13 @@ window.CalculatradeModules.auth = {
       this.assets = [];
       this.risks = [];
       this.measures = [];
+      this.selectedRiskId = null;
+      this.riskSearch = '';
+      this.riskFilter = 'all';
+      this.riskSort = 'score-desc';
       this.showNotification('👋 Вы вышли из аккаунта', 'info');
     } catch (error) {
-      this.showNotification(`❌ Не удалось выйти: ${error.message}`, 'error');
+      this.showNotification(`✗ Не удалось выйти: ${error.message}`, 'error');
     }
   }
 };

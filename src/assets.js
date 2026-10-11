@@ -17,15 +17,15 @@ window.CalculatradeModules.assets = {
 
   async submitAsset() {
     if (!this.assetForm.name.trim()) {
-      this.showNotification('❌ Введите название актива', 'error');
+      this.showNotification('✗ Введите название актива', 'error');
       return;
     }
     if (!this.assetForm.value || isNaN(this.assetForm.value)) {
-      this.showNotification('❌ Введите корректную стоимость', 'error');
+      this.showNotification('✗ Введите корректную стоимость', 'error');
       return;
     }
     if (this.assetForm.priority < 1 || this.assetForm.priority > 4) {
-      this.showNotification('❌ Приоритет должен быть от 1 до 4', 'error');
+      this.showNotification('✗ Приоритет должен быть от 1 до 4', 'error');
       return;
     }
 
@@ -39,7 +39,7 @@ window.CalculatradeModules.assets = {
       this.assets.push(asset);
       this.closeAddAssetModal();
       this.showNotification(
-          `✅ Актив "${this.assetForm.name}" добавлен`, 'success');
+          `✓ Актив "${this.assetForm.name}" добавлен`, 'success');
     }
   },
 
@@ -72,7 +72,7 @@ window.CalculatradeModules.assets = {
     }
 
     this.showNotification(
-        `✅ Приоритет актива "${asset.name}" обновлён`, 'success');
+        `✓ Приоритет актива "${asset.name}" обновлён`, 'success');
   },
 
   async updateAsset(assetId, updates) {
@@ -85,7 +85,7 @@ window.CalculatradeModules.assets = {
     // Сохраняем в БД
     await db.updateAsset(assetId, updates);
 
-    this.showNotification('✅ Актив обновлен', 'success');
+    this.showNotification('✓ Актив обновлен', 'success');
   },
 
   async deleteAsset(id) {
@@ -101,8 +101,17 @@ window.CalculatradeModules.assets = {
 
     await db.deleteAsset(id);
     this.assets = this.assets.filter(a => a.id !== id);
+    const deletedRiskIds = linkedRisks.map(r => r.id);
     this.risks = this.risks.filter(r => r.assetId !== id);
+    for (const measure of this.measures) {
+      if (deletedRiskIds.includes(measure.linkedRiskId)) {
+        measure.linkedRiskId = null;
+      }
+    }
+    if (deletedRiskIds.includes(this.selectedRiskId)) {
+      this.selectedRiskId = null;
+    }
 
-    this.showNotification('✅ Актив удалён', 'success');
+    this.showNotification('✓ Актив удалён', 'success');
   }
 }

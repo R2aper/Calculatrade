@@ -4,19 +4,16 @@
 
 document.addEventListener('alpine:init', () => {
   const modules = window.CalculatradeModules;
-  const dashboard = modules.dashboard;
+  const appModules = [
+    modules.ui, modules.auth, modules.assets, modules.risks,
+    modules.measures, modules.calculations, modules.dashboard
+  ];
 
   Alpine.data('app', () => {
-    const app = Object.assign(
-        modules.createState(), modules.ui, modules.auth, modules.assets,
-        modules.risks, modules.measures, modules.calculations);
-
-    Object.keys(dashboard).forEach(key => {
-      const descriptor = Object.getOwnPropertyDescriptor(dashboard, key);
-      if (typeof descriptor.value === 'function') app[key] = descriptor.value;
-    });
-
-    Object.defineProperties(app, Object.getOwnPropertyDescriptors(dashboard));
+    const app = modules.createState();
+    for (const module of appModules) {
+      Object.defineProperties(app, Object.getOwnPropertyDescriptors(module));
+    }
     return app;
   });
 });
