@@ -87,19 +87,23 @@ window.CalculatradeModules.dashboard = {
 
   async resetAll() {
     if (!confirm('Сбросить ВСЕ данные текущего пользователя?')) return;
-    await db.resetUserData();
-    this.assets = [];
-    this.risks = [];
-    this.measures = [];
-    this.criteria = {
-      formula: 'Урон ⋅ Вероятность ⋅ Приоритет',
-      damageMax: 4,
-      probMax: 4,
-      priorityMax: 4,
-      riskAppetite: 12,
-      costPerPoint: 50000
-    };
-    this.currentTab = 0;
-    this.showNotification('✅ Данные пользователя очищены', 'success');
+    const saved = await db.resetUserData();
+    if (saved) {
+      this.assets = [];
+      this.risks = [];
+      this.measures = [];
+      this.criteria = {
+        formula: 'Урон ⋅ Вероятность ⋅ Приоритет',
+        damageMax: 4,
+        probMax: 4,
+        priorityMax: 4,
+        riskAppetite: 12,
+        costPerPoint: 50000
+      };
+      this.currentTab = 0;
+      this.showNotification('✅ Данные пользователя очищены', 'success');
+      return;
+    }
+    this.showNotification('❌ Ошибка очистки данных', 'error');
   }
 };

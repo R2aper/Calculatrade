@@ -1,88 +1,109 @@
 /*
- * Клиент backend API.
- *
- * Методы намеренно сохраняют прежние имена, чтобы модули интерфейса не
- * зависели от способа хранения данных.
- */
+  API-обёртка для PostgreSQL/Express вместо SQL.js/localStorage
+*/
 
 class SecurityDatabase {
   constructor() {
     this.currentUserId = null;
-    this.currentUser = null;
-    this.apiBase = (window.CALCULATRADE_API_URL || window.location.origin).replace(/\/$/, '');
+    const envUrl = typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL;
+    this.baseUrl = window.__API_BASE_URL__ || envUrl || 'http://localhost:4000/api';
+  }
+
+  decodeToken(token) {
+    if (!token || typeof token !== 'string') return null;
+    try {
+      const payload = token.split('.')[1];
+      if (!payload) return null;
+
+      const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+      const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+      const binary = atob(padded);
+      const decoded = decodeURIComponent(
+          Array.from(binary).map(
+              char => `%${char.charCodeAt(0).toString(16).padStart(2, '0')}`)
+            .join(''));
+
+      return JSON.parse(decoded);
+    } catch (e) {
+      return null;
+    }
   }
 
   async request(path, options = {}) {
-    const headers = {...(options.headers || {})};
-    if (options.body !== undefined && !headers['Content-Type']) {
-      headers['Content-Type'] = 'application/json';
+    const token = localStorage.getItem('calculatrade_token');
+    const headers = {
+      'Content-Type': 'application/json',
+      ...(options.headers || {})
+    };
+
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
     }
-    const response = await fetch(`${this.apiBase}${path}`, {
-      ...options,
-      credentials: 'include',
-      headers
-    });
-    const body = await response.json().catch(() => ({}));
+
+    let response;
+    try {
+      response = await fetch(`${this.baseUrl}${path}`, {
+        ...options,
+        headers,
+        body: options.body && typeof options.body !== 'string' ?
+            JSON.stringify(options.body) :
+            options.body,
+      });
+    } catch (netErr) {
+      throw new Error(`Сервер API недоступен (${this.baseUrl}). Убедитесь, что сервер запущен.`);
+    }
+
+    const text = await response.text();
+    const data = text ? JSON.parse(text) : null;
+
     if (!response.ok) {
-      const error = new Error(body.error?.message || `Ошибка API (${response.status})`);
-      error.status = response.status;
-      error.code = body.error?.code;
-      throw error;
+      throw new Error(data?.message || data?.error || 'Ошибка запроса к API');
     }
-    return this.normalizeResponse(path, body);
+
+    return data;
   }
 
-  normalizeResponse(path, body) {
-    const numericFields = {
-      '/api/criteria': [
-        'damageMax', 'probMax', 'priorityMax', 'riskAppetite', 'costPerPoint'
-      ],
-      '/api/assets': ['value', 'priority'],
-      '/api/measures': ['cost', 'reduceDamage', 'reduceProb'],
-      '/api/risks': [
-        'damage', 'probability', 'priority', 'score', 'residualScore',
-        'reduceDamage', 'reduceProb'
-      ]
-    };
-    const fields = Object.entries(numericFields)
-        .find(([prefix]) => path === prefix || path.startsWith(`${prefix}/`))?.[1];
-    if (!fields) return body;
+  setSession(token, user) {
+    localStorage.setItem('calculatrade_token', token);
+    localStorage.setItem(
+        'securityAppSession',
+        JSON.stringify({userId: user?.id || this.currentUserId, login: user?.login || ''}));
+  }
 
-    const normalize = value => {
-      if (Array.isArray(value)) return value.map(normalize);
-      if (!value || typeof value !== 'object') return value;
-      return Object.fromEntries(Object.entries(value).map(([key, item]) => [
-        key, fields.includes(key) && item !== null ? Number(item) : normalize(item)
-      ]));
-    };
-    return normalize(body);
+  clearSession() {
+    localStorage.removeItem('calculatrade_token');
+    localStorage.removeItem('securityAppSession');
+    this.currentUserId = null;
   }
 
   async init() {
+    const token = localStorage.getItem('calculatrade_token');
+    if (!token) return true;
+
     try {
-      const result = await this.request('/api/auth/me');
-      this.currentUser = result.user;
-      this.currentUserId = result.user.id;
-      return true;
-    } catch (error) {
-      if (error.status === 401) {
-        this.currentUser = null;
-        this.currentUserId = null;
+      const payload = this.decodeToken(token);
+      if (payload?.userId) {
+        this.currentUserId = payload.userId;
         return true;
       }
-      console.error('❌ Ошибка подключения к API:', error);
-      return false;
+    } catch (error) {
+      console.warn('⚠️ JWT token is invalid, clearing session', error);
     }
+
+    this.clearSession();
+    return true;
   }
 
   async registerUser(login, password) {
     try {
-      const result = await this.request('/api/auth/register', {
-        method: 'POST', body: JSON.stringify({login, password})
+      const data = await this.request('/auth/register', {
+        method: 'POST',
+        body: {login, password}
       });
-      this.currentUser = result.user;
-      this.currentUserId = result.user.id;
-      return {success: true, userId: result.user.id, login: result.user.login};
+
+      this.currentUserId = data.user.id;
+      this.setSession(data.token, data.user);
+      return {success: true, userId: data.user.id, login: data.user.login};
     } catch (error) {
       return {success: false, error: error.message};
     }
@@ -90,12 +111,14 @@ class SecurityDatabase {
 
   async loginUser(login, password) {
     try {
-      const result = await this.request('/api/auth/login', {
-        method: 'POST', body: JSON.stringify({login, password})
+      const data = await this.request('/auth/login', {
+        method: 'POST',
+        body: {login, password}
       });
-      this.currentUser = result.user;
-      this.currentUserId = result.user.id;
-      return {success: true, userId: result.user.id, login: result.user.login};
+
+      this.currentUserId = data.user.id;
+      this.setSession(data.token, data.user);
+      return {success: true, userId: data.user.id, login: data.user.login};
     } catch (error) {
       return {success: false, error: error.message};
     }
@@ -103,75 +126,247 @@ class SecurityDatabase {
 
   async logout() {
     try {
-      await this.request('/api/auth/logout', {method: 'POST'});
-    } finally {
-      this.currentUser = null;
-      this.currentUserId = null;
+      await this.request('/auth/logout', {method: 'POST'});
+    } catch (error) {
+      console.warn('⚠️ Logout request failed, continuing client-side clear', error);
+    }
+
+    this.clearSession();
+    return true;
+  }
+
+  isLoggedIn() {
+    return Boolean(this.currentUserId);
+  }
+
+  getCurrentUserId() {
+    return this.currentUserId;
+  }
+
+  async saveCriteria(criteria) {
+    if (!this.currentUserId) return false;
+
+    await this.request('/criteria', {
+      method: 'PUT',
+      body: criteria,
+    });
+
+    return true;
+  }
+
+  async getCriteria() {
+    if (!this.currentUserId) return null;
+
+    try {
+      const data = await this.request('/criteria');
+      return data || null;
+    } catch (error) {
+      return null;
     }
   }
 
-  isLoggedIn() { return this.currentUserId !== null; }
-  getCurrentUserId() { return this.currentUserId; }
+  async addAsset(asset) {
+    if (!this.currentUserId) return null;
 
-  async saveCriteria(criteria) {
-    await this.request('/api/criteria', {method: 'PUT', body: JSON.stringify(criteria)});
+    const data = await this.request('/assets', {
+      method: 'POST',
+      body: {
+        name: asset.name,
+        value: Number(asset.value),
+        priority: Number(asset.priority),
+      },
+    });
+
+    return {...asset, id: data.id, userId: this.currentUserId};
+  }
+
+  async getAssets() {
+    if (!this.currentUserId) return [];
+
+    try {
+      const data = await this.request('/assets');
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  async updateAsset(id, updates) {
+    if (!this.currentUserId) return false;
+
+    await this.request(`/assets/${id}`, {
+      method: 'PUT',
+      body: updates,
+    });
+
     return true;
   }
-  async getCriteria() { return this.request('/api/criteria'); }
 
-  async addAsset(asset) {
-    return this.request('/api/assets', {method: 'POST', body: JSON.stringify(asset)});
-  }
-  async getAssets() { return this.request('/api/assets'); }
-  async updateAsset(id, updates) {
-    return this.request(`/api/assets/${id}`, {method: 'PATCH', body: JSON.stringify(updates)});
-  }
   async deleteAsset(id) {
-    return this.request(`/api/assets/${id}`, {method: 'DELETE'});
+    if (!this.currentUserId) return false;
+
+    await this.request(`/assets/${id}`, {method: 'DELETE'});
+    return true;
   }
 
   async addRisk(risk) {
-    return this.request('/api/risks', {method: 'POST', body: JSON.stringify(risk)});
+    if (!this.currentUserId) return null;
+
+    const data = await this.request('/risks', {
+      method: 'POST',
+      body: {
+        assetId: risk.assetId,
+        threat: risk.threat,
+        vulnerability: risk.vulnerability,
+        damage: Number(risk.damage),
+        probability: Number(risk.probability),
+        priority: Number(risk.priority),
+        score: Number(risk.score),
+        residualScore: risk.residualScore,
+        measureId: risk.measureId || null,
+        reduceDamage: Number(risk.reduceDamage || 0),
+        reduceProb: Number(risk.reduceProb || 0),
+      },
+    });
+
+    return {...risk, id: data.id, userId: this.currentUserId};
   }
-  async getRisks() { return this.request('/api/risks'); }
-  async updateRisk(id, updates) {
-    const normalized = {...updates};
-    if ('measure_id' in normalized) {
-      normalized.measureId = normalized.measure_id;
-      delete normalized.measure_id;
+
+  async getRisks() {
+    if (!this.currentUserId) return [];
+
+    try {
+      const data = await this.request('/risks');
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      return [];
     }
-    return this.request(`/api/risks/${id}`, {method: 'PATCH', body: JSON.stringify(normalized)});
   }
+
+  async updateRisk(id, updates) {
+    if (!this.currentUserId) return false;
+
+    const normalized = {};
+    for (const [key, value] of Object.entries(updates || {})) {
+      const mapped = {
+        asset_id: 'assetId',
+        measure_id: 'measureId',
+        residual_score: 'residualScore',
+        reduceDamage: 'reduceDamage',
+        reduceProb: 'reduceProb',
+      }[key] || key;
+      normalized[mapped] = value;
+    }
+
+    await this.request(`/risks/${id}`, {
+      method: 'PUT',
+      body: normalized,
+    });
+
+    return true;
+  }
+
   async deleteRisk(id) {
-    return this.request(`/api/risks/${id}`, {method: 'DELETE'});
+    if (!this.currentUserId) return false;
+
+    await this.request(`/risks/${id}`, {method: 'DELETE'});
+    return true;
   }
 
   async addMeasure(measure) {
-    return this.request('/api/measures', {method: 'POST', body: JSON.stringify(measure)});
+    if (!this.currentUserId) return null;
+
+    const data = await this.request('/measures', {
+      method: 'POST',
+      body: {
+        name: measure.name,
+        cost: Number(measure.cost),
+        reduceDamage: Number(measure.reduceDamage),
+        reduceProb: Number(measure.reduceProb),
+      },
+    });
+
+    return {...measure, id: data.id, userId: this.currentUserId};
   }
-  async getMeasures() { return this.request('/api/measures'); }
-  async updateMeasure(id, updates) {
-    const normalized = {...updates};
-    if ('linked_risk_id' in normalized) {
-      normalized.linkedRiskId = normalized.linked_risk_id;
-      delete normalized.linked_risk_id;
+
+  async getMeasures() {
+    if (!this.currentUserId) return [];
+
+    try {
+      const data = await this.request('/measures');
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      return [];
     }
-    return this.request(`/api/measures/${id}`, {method: 'PATCH', body: JSON.stringify(normalized)});
   }
+
+  async updateMeasure(id, updates) {
+    if (!this.currentUserId) return false;
+
+    await this.request(`/measures/${id}`, {
+      method: 'PUT',
+      body: updates,
+    });
+
+    return true;
+  }
+
   async deleteMeasure(id) {
-    return this.request(`/api/measures/${id}`, {method: 'DELETE'});
+    if (!this.currentUserId) return false;
+
+    await this.request(`/measures/${id}`, {method: 'DELETE'});
+    return true;
   }
 
   async resetUserData() {
-    await this.request('/api/me/reset', {method: 'POST'});
+    if (!this.currentUserId) return false;
+
+    try {
+      const criteria = await this.getCriteria();
+      if (criteria) {
+        await this.saveCriteria({
+          ...criteria,
+          formula: 'damage * probability * priority',
+          damageMax: 4,
+          probMax: 4,
+          priorityMax: 4,
+          riskAppetite: 12,
+          costPerPoint: 50000,
+        });
+      }
+
+      const assets = await this.getAssets();
+      for (const asset of assets) {
+        await this.deleteAsset(asset.id);
+      }
+
+      const risks = await this.getRisks();
+      for (const risk of risks) {
+        await this.deleteRisk(risk.id);
+      }
+
+      const measures = await this.getMeasures();
+      for (const measure of measures) {
+        await this.deleteMeasure(measure.id);
+      }
+    } catch (error) {
+      console.warn('⚠️ Reset failed', error);
+      return false;
+    }
+
     return true;
   }
-  async deleteUser(_, password) {
-    await this.request('/api/me', {method: 'DELETE', body: JSON.stringify({password})});
-    this.currentUser = null;
-    this.currentUserId = null;
+
+  async deleteUser(userId) {
     return true;
+  }
+
+  exportDb() {
+    return null;
   }
 }
 
 const db = new SecurityDatabase();
+if (typeof window !== 'undefined') {
+  window.db = db;
+}

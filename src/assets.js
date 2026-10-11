@@ -61,8 +61,7 @@ window.CalculatradeModules.assets = {
       r.score = this.calculateRisk(r.damage, r.probability, r.priority);
 
       if (r.residualScore !== null) {
-        r.residualScore =
-            this.calculateResidualRisk(r, r.reduceDamage, r.reduceProb);
+        r.residualScore = this.calculateResidualRisk(r, r.reduceDamage, r.reduceProb);
       }
       await db.updateRisk(r.id, {
         priority: r.priority,
@@ -79,10 +78,7 @@ window.CalculatradeModules.assets = {
     const asset = this.assets.find(a => a.id === assetId);
     if (!asset) return;
 
-    // Обновляем в объекте
     Object.assign(asset, updates);
-
-    // Сохраняем в БД
     await db.updateAsset(assetId, updates);
 
     this.showNotification('✅ Актив обновлен', 'success');
@@ -92,7 +88,7 @@ window.CalculatradeModules.assets = {
     const asset = this.assets.find(a => a.id === id);
     const linkedRisks = this.risks.filter(r => r.assetId === id);
 
-    if (linkedRisks.length > 0) {
+    if (linkedRisks.length > 0 && asset) {
       const confirm_delete = confirm(
           `Актив "${asset.name}" имеет ${linkedRisks.length} риск(ов). 
                      Они будут удалены. Продолжить?`);

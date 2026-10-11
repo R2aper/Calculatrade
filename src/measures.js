@@ -74,20 +74,20 @@ window.CalculatradeModules.measures = {
   async deleteMeasure(id) {
     await db.deleteMeasure(id);
     this.measures = this.measures.filter(m => m.id !== id);
-    for (const r of this.risks) {
+    this.risks.forEach(async r => {
       if (r.measureId === id) {
         r.measureId = null;
         r.reduceDamage = 0;
         r.reduceProb = 0;
         r.residualScore = null;
         await db.updateRisk(r.id, {
-          measure_id: null,
+          measureId: null,
           reduceDamage: 0,
           reduceProb: 0,
           residualScore: null
         });
       }
-    }
+    });
     this.showNotification('✅ Мера удалена', 'success');
   },
 
@@ -118,7 +118,7 @@ window.CalculatradeModules.measures = {
     risk.residualScore = this.calculateResidualRisk(
         risk, measure.reduceDamage, measure.reduceProb);
     await db.updateRisk(risk.id, {
-      measure_id: risk.measureId,
+      measureId: risk.measureId,
       reduceDamage: risk.reduceDamage,
       reduceProb: risk.reduceProb,
       residualScore: risk.residualScore
@@ -189,7 +189,7 @@ window.CalculatradeModules.measures = {
     risk.reduceProb = 0;
     risk.residualScore = null;
     await db.updateRisk(risk.id, {
-      measure_id: null,
+      measureId: null,
       reduceDamage: 0,
       reduceProb: 0,
       residualScore: null

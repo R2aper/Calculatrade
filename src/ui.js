@@ -25,11 +25,9 @@ window.CalculatradeModules.ui = {
   },
 
   async saveCriteria() {
-    try {
-      await db.saveCriteria(this.criteria);
-      this.showNotification('✅ Критерии сохранены!', 'success');
-    } catch (error) {
-      this.showNotification(`❌ Ошибка сохранения: ${error.message}`, 'error');
-    }
+    const saved = await db.saveCriteria(this.criteria);
+    this.showNotification(
+        saved ? '✅ Критерии сохранены!' : '❌ Ошибка сохранения критериев',
+        saved ? 'success' : 'error');
   }
 };

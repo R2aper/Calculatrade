@@ -1,18 +1,21 @@
 services:
   postgres:
     image: postgres:16-alpine
+    container_name: calculatrade-postgres
+    restart: unless-stopped
     environment:
       POSTGRES_DB: calculatrade
-      POSTGRES_USER: calculatrade
-      POSTGRES_PASSWORD: calculatrade
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     ports:
       - "5432:5432"
     volumes:
-      - calculatrade-postgres:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U calculatrade -d calculatrade"]
-      interval: 5s
+      test: ["CMD-SHELL", "pg_isready -U postgres -d calculatrade"]
+      interval: 10s
       timeout: 5s
-      retries: 10
+      retries: 5
+
 volumes:
-  calculatrade-postgres:
+  postgres_data:
